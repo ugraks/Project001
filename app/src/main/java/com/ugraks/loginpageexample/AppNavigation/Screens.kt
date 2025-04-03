@@ -41,6 +41,13 @@ sealed class Screens(val route : String) {
 
     )
 
+    @Serializable
+    data class ScreenPersonPage(
+        val name : String,
+        val surname : String
+
+    )
+
 
 
 

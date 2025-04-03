@@ -47,7 +47,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import com.ugraks.loginpageexample.AppNavigation.Screens
 import com.ugraks.loginpageexample.AppNavigation.Screens.ScreenLoginPage
+import com.ugraks.loginpageexample.AppNavigation.Screens.ScreenPersonPage
 import kotlinx.coroutines.launch
 
 
@@ -81,7 +83,11 @@ fun HomePage(navController: NavHostController, name: String, surname: String) {
                         label = { Text("Your Profile") },
                         selected = false,
                         icon = {Icon(Icons.Filled.AccountCircle, contentDescription = null)},
-                        onClick = { /* Handle click */ }
+                        onClick = {
+                            navController.navigate(ScreenPersonPage(name,surname))
+
+
+                        }
                     )
                     NavigationDrawerItem(
                         label = { Text("Sign Out") },

@@ -10,12 +10,14 @@ import com.ugraks.loginpageexample.AppNavigation.Screens.NewPassword
 import com.ugraks.loginpageexample.AppNavigation.Screens.RegisterPage
 import com.ugraks.loginpageexample.AppNavigation.Screens.ScreenHomePage
 import com.ugraks.loginpageexample.AppNavigation.Screens.ScreenLoginPage
+import com.ugraks.loginpageexample.AppNavigation.Screens.ScreenPersonPage
 import com.ugraks.loginpageexample.AppNavigation.Screens.ScreenSignInSuccess
 import com.ugraks.loginpageexample.AppNavigation.Screens.ScreenSignUpSuccess
 import com.ugraks.loginpageexample.FirstLoginPage
 import com.ugraks.loginpageexample.ForgotPassword
 import com.ugraks.loginpageexample.HomePage
 import com.ugraks.loginpageexample.NewPassword
+import com.ugraks.loginpageexample.PersonPage
 import com.ugraks.loginpageexample.RegisterPage
 import com.ugraks.loginpageexample.SignSuccess
 import com.ugraks.loginpageexample.SignUpSuccess
@@ -59,6 +61,12 @@ fun SayfaGecisleri() {
             val args = it.toRoute<ScreenHomePage>()
             HomePage(navController,args.name,args.surname)
 
+
+
+        }
+        composable<ScreenPersonPage>{
+            val args = it.toRoute<ScreenPersonPage>()
+            PersonPage(navController,args.name,args.surname)
 
 
         }

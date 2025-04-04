@@ -34,14 +34,14 @@ import com.ugraks.loginpageexample.AppNavigation.Screens.ScreenHomePage
 import kotlinx.coroutines.delay
 
 @Composable
-fun SignSuccess(navController: NavController, name: String, surname: String) {
+fun SignSuccess(navController: NavController, name: String) {
     val context = LocalContext.current
     Column(modifier = Modifier.fillMaxSize().background(Color.White)) {
 
 
         Text(
             """
-            You Signed In Successfully ${name + " " + surname}...
+            You Signed In Successfully ${name}...
             Wait Please...
             
             
@@ -69,7 +69,7 @@ fun SignSuccess(navController: NavController, name: String, surname: String) {
 
             LaunchedEffect(Unit) {
                 delay(3000) // 3 saniye bekle
-                navController.navigate(ScreenHomePage(name,surname))
+                navController.navigate(ScreenHomePage(name))
 
             }
 

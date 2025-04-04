@@ -56,6 +56,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.core.content.ContextCompat.startActivity
 import androidx.navigation.NavController
 import com.ugraks.loginpageexample.AppNavigation.Screens
@@ -106,7 +107,7 @@ fun FirstLoginPage(navController: NavController) {
                 ,value = username.value
                 , onValueChange = {
 
-                    if (it.length <= 30 && it.all { char -> char.isLetterOrDigit() }) {
+                    if (it.length <= 30 && it.none { char -> char.isWhitespace() }) {
                         username.value = it
                     }
 
@@ -136,12 +137,13 @@ fun FirstLoginPage(navController: NavController) {
                 ,value = password.value
                 , onValueChange = {
 
-                    if (it.length <= 30 && it.all { char -> char.isDigit() }) {
+                    if (it.length <= 30 && it.none { char -> char.isWhitespace() }) {
                         password.value = it
                     }
 
 
                 }, label = {Text("Password :")},
+                    visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions.Default.copy(
                     keyboardType = KeyboardType.Number))
 
@@ -195,7 +197,7 @@ fun FirstLoginPage(navController: NavController) {
                 }
                 else{
 
-                    navController.navigate(ScreenSignInSuccess(username.value,password.value))
+                    navController.navigate(ScreenSignInSuccess(username.value))
                 }
 
 

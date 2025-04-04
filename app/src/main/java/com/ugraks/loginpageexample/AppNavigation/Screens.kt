@@ -19,7 +19,7 @@ sealed class Screens(val route : String) {
     @Serializable
     data class ScreenSignUpSuccess(
         val name: String,
-        val surname: String
+
 
 
     )
@@ -28,7 +28,7 @@ sealed class Screens(val route : String) {
     @Serializable
     data class ScreenSignInSuccess(
         val name: String,
-        val surname: String
+
 
 
     )
@@ -37,14 +37,14 @@ sealed class Screens(val route : String) {
     data class ScreenHomePage(
 
         val name : String,
-        val surname : String
+
 
     )
 
     @Serializable
     data class ScreenPersonPage(
         val name : String,
-        val surname : String
+
 
     )
 

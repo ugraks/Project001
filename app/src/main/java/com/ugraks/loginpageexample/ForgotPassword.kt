@@ -133,7 +133,7 @@ fun ForgotPassword(navController: NavController) {
                 ,value = emaill.value
                 , onValueChange = {
 
-                    if (it.length <= 30) {
+                    if (it.length <= 30 && it.none { char -> char.isWhitespace() }) {
                         emaill.value = it
                     }
 

@@ -24,11 +24,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
-import com.ugraks.loginpageexample.AppNavigation.Screens
-import com.ugraks.loginpageexample.AppNavigation.Screens.ScreenHomePage
 
 @Composable
-fun PersonPage(navController: NavHostController, name: String, surname: String) {
+fun PersonPage(navController: NavHostController, name: String) {
     Column(modifier = Modifier.fillMaxSize().background(Color.White)) {
 
             Column (modifier = Modifier.fillMaxWidth().padding(top = 35.dp)){
@@ -60,7 +58,7 @@ fun PersonPage(navController: NavHostController, name: String, surname: String) 
 
             Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
 
-                Text(text = "Hello ${name +" "+ surname}", fontSize = 20.sp)
+                Text(text = "Hello ${name}", fontSize = 20.sp)
 
 
 

@@ -25,6 +25,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -74,7 +75,7 @@ fun RegisterPage(navController: NavController){
                 ,value = username.value
                 , onValueChange = {
 
-                    if (it.length <= 30 && it.all { char -> char.isLetter() }) {
+                    if (it.length <= 30 && it.all { char -> char.isLetter() || char.isWhitespace() }) {
                         username.value = it
                     }
 
@@ -103,7 +104,7 @@ fun RegisterPage(navController: NavController){
                 ,value = businessName.value
                 , onValueChange = {
 
-                    if (it.length <= 30 && it.all { char -> char.isLetterOrDigit() }) {
+                    if (it.length <= 30 && it.all { char -> char.isLetterOrDigit() || char.isWhitespace() }) {
                         businessName.value = it
                     }
 
@@ -162,7 +163,7 @@ fun RegisterPage(navController: NavController){
                 ,value = email.value
                 , onValueChange = {
 
-                    if (it.length <= 30)  {
+                    if (it.length <= 30 && it.none { char -> char.isWhitespace() })  {
                         email.value = it
                     }
 
@@ -190,14 +191,18 @@ fun RegisterPage(navController: NavController){
                 ,value = password.value
                 , onValueChange = {
 
-                    if (it.length <= 30 && it.all { char -> char.isLetterOrDigit() }) {
+                    if (it.length <= 30 && it.none { char -> char.isWhitespace() }) {
                         password.value = it
                     }
 
 
 
-                }, label = {Text("Password :")},keyboardOptions = KeyboardOptions.Default.copy(
+                }, label = {Text("Password :")},
+                visualTransformation = PasswordVisualTransformation()
+                ,keyboardOptions = KeyboardOptions.Default.copy(
                     keyboardType = KeyboardType.Password))
+
+
 
 
 
@@ -225,7 +230,7 @@ fun RegisterPage(navController: NavController){
 
                     }
                     else {
-                    navController.navigate(ScreenSignUpSuccess(username.value,password.value))
+                    navController.navigate(ScreenSignUpSuccess(username.value))
                     }
 
                 }

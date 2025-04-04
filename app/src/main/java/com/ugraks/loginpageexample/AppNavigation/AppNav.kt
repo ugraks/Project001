@@ -43,7 +43,7 @@ fun SayfaGecisleri() {
         composable<ScreenSignInSuccess> {
 
             val args = it.toRoute<ScreenSignInSuccess>()
-            SignSuccess(navController,args.name,args.surname)
+            SignSuccess(navController,args.name)
 
         }
         composable<NewPassword> {
@@ -54,19 +54,19 @@ fun SayfaGecisleri() {
         composable<ScreenSignUpSuccess> {
 
             val args = it.toRoute<ScreenSignUpSuccess>()
-            SignUpSuccess(navController,args.name,args.surname)
+            SignUpSuccess(navController,args.name)
 
         }
         composable<ScreenHomePage> {
             val args = it.toRoute<ScreenHomePage>()
-            HomePage(navController,args.name,args.surname)
+            HomePage(navController,args.name)
 
 
 
         }
         composable<ScreenPersonPage>{
             val args = it.toRoute<ScreenPersonPage>()
-            PersonPage(navController,args.name,args.surname)
+            PersonPage(navController,args.name)
 
 
         }

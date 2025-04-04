@@ -35,19 +35,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
-import com.ugraks.loginpageexample.AppNavigation.Screens
 import com.ugraks.loginpageexample.AppNavigation.Screens.ScreenLoginPage
 import com.ugraks.loginpageexample.AppNavigation.Screens.ScreenPersonPage
 import kotlinx.coroutines.launch
@@ -55,7 +49,7 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomePage(navController: NavHostController, name: String, surname: String) {
+fun HomePage(navController: NavHostController, name: String) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
@@ -84,7 +78,7 @@ fun HomePage(navController: NavHostController, name: String, surname: String) {
                         selected = false,
                         icon = {Icon(Icons.Filled.AccountCircle, contentDescription = null)},
                         onClick = {
-                            navController.navigate(ScreenPersonPage(name,surname))
+                            navController.navigate(ScreenPersonPage(name))
 
 
                         }
@@ -134,7 +128,7 @@ fun HomePage(navController: NavHostController, name: String, surname: String) {
 
 
                 TopAppBar(
-                    title = { Text("Welcome ${name+ " " +surname}", color = Color.Black) },
+                    title = { Text("Welcome ${name}", color = Color.Black) },
                     navigationIcon = {
                         IconButton(onClick = {
 

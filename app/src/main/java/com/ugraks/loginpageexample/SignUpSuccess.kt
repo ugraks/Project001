@@ -32,13 +32,13 @@ import com.ugraks.loginpageexample.AppNavigation.Screens
 import com.ugraks.loginpageexample.AppNavigation.Screens.ScreenSignUpSuccess
 
 @Composable
-fun SignUpSuccess(navController: NavController, name: String, surname: String) {
+fun SignUpSuccess(navController: NavController, name: String) {
     Column(modifier = Modifier.fillMaxSize().background(Color.White)) {
 
 
         Text(
             """
-            Welcome ${name + " " + surname}
+            Welcome ${name}
             You Signed Up Successfully...
             Wait Please...
             

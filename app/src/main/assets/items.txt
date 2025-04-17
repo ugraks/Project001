@@ -1,0 +1,30 @@
+item:Apple,calories:520,type:Food
+item:Coke,calories:420,type:Drink
+item:Chicken,calories:2390,type:Food
+item:Orange Juice,calories:450,type:Drink
+item:Bread,calories:2650,type:Food
+item:Ayran,calories:330,type:Drink
+item:Pasta,calories:3710,type:Food
+item:Milk,calories:640,type:Drink
+item:Beef,calories:2500,type:Food
+item:Water,calories:0,type:Drink
+item:Cheese,calories:4020,type:Food
+item:Beer,calories:430,type:Drink
+item:Rice,calories:3600,type:Food
+item:Tea With Sugar,calories:150,type:Drink
+item:Egg,calories:1550,type:Food
+item:Coffee Latte,calories:600,type:Drink
+item:Potato,calories:770,type:Food
+item:Energy Drink,calories:450,type:Drink
+item:Fish,calories:2000,type:Food
+item:Smoothie,calories:700,type:Drink
+item:Nuts,calories:6000,type:Food
+item:Chocolate Milk,calories:800,type:Drink
+item:Banana,calories:890,type:Food
+item:Iced Tea,calories:200,type:Drink
+item:Pizza,calories:2660,type:Food
+item:Soy Milk,calories:450,type:Drink
+item:Lentils,calories:3500,type:Food
+item:Tomato Juice,calories:170,type:Drink
+item:Avocado,calories:1600,type:Food
+item:Coconut Water,calories:190,type:Drink

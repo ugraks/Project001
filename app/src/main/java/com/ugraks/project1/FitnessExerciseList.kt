@@ -182,9 +182,9 @@ fun ExerciseListScreen(
 // Resmi dosya adından almak için yardımcı fonksiyon
 fun getExerciseImageResource(exerciseName: String): Int {
     return when (exerciseName) {
-        "Push-up" -> R.drawable.push_up
-        "Incline Bench Press" -> R.drawable.bench_press
-        "Deadlift" -> R.drawable.deadlift
+        //"Push-up" -> R.drawable.push_up
+        //"Incline Bench Press" -> R.drawable.bench_press
+        //"Deadlift" -> R.drawable.deadlift
         // Diğer egzersizler için benzer şekilde ekleyin
         else -> R.drawable.baseline_fitness_center_24 // Varsayılan bir resim
     }

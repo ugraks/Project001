@@ -46,16 +46,15 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.ugraks.project1.Authenticate.getLikeCountForRecipe
-import com.ugraks.project1.Authenticate.hasUserLikedRecipe
 import com.ugraks.project1.Authenticate.readRecipesFromAssets
-import com.ugraks.project1.Authenticate.toggleLike
+
 
 @Composable
-fun RecipeListScreen(navController: NavController, userEmail: String) {
+fun RecipeListScreen(navController: NavController) {
     val context = LocalContext.current
     val allRecipes = remember { readRecipesFromAssets(context) }
     var searchText by remember { mutableStateOf("") }
@@ -126,12 +125,6 @@ fun RecipeListScreen(navController: NavController, userEmail: String) {
         // Tarif Listesi
         LazyColumn(contentPadding = PaddingValues(vertical = 8.dp)) {
             itemsIndexed(filteredRecipes) { index, recipe ->
-                val likedState = remember {
-                    mutableStateOf(hasUserLikedRecipe(context, userEmail, recipe.name))
-                }
-                val likeCountState = remember {
-                    mutableStateOf(getLikeCountForRecipe(context, recipe.name))
-                }
 
                 Card(
                     modifier = Modifier
@@ -148,39 +141,17 @@ fun RecipeListScreen(navController: NavController, userEmail: String) {
                     Column(
                         modifier = Modifier
                             .padding(16.dp)
+                            .fillMaxWidth(), // Card genişliğini doldur
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
                             text = recipe.name,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Medium,
                             color = colorScheme.onSurface
+
                         )
 
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            IconButton(
-                                onClick = {
-                                    toggleLike(context, userEmail, recipe.name)
-                                    likedState.value = !likedState.value
-                                    likeCountState.value = getLikeCountForRecipe(context, recipe.name)
-                                }
-                            ) {
-                                androidx.compose.material3.Icon(
-                                    imageVector = if (likedState.value) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                    contentDescription = "Like",
-                                    tint = if (likedState.value) colorScheme.primary else colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
-
-                            Text(
-                                text = "${likeCountState.value} Likes",
-                                fontSize = 14.sp,
-                                color = colorScheme.onSurface,
-                                modifier = Modifier.padding(start = 8.dp)
-                            )
-                        }
                     }
                 }
 

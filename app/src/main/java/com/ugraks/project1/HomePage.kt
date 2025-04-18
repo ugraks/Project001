@@ -4,6 +4,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -72,15 +73,12 @@ import androidx.core.content.ContextCompat
 import androidx.navigation.NavHostController
 import com.ugraks.project1.AppNavigation.Screens
 import com.ugraks.project1.AppNavigation.Screens.DailyCaloriesPage
-import com.ugraks.project1.AppNavigation.Screens.ScreenLoginPage
-import com.ugraks.project1.AppNavigation.Screens.ScreenPersonPage
 import com.ugraks.project1.AppNavigation.Screens.ScreenRatingPage
-import com.ugraks.project1.Authenticate.deleteUserByEmail
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomePage(navController: NavHostController, username: String, email: String) {
+fun HomePage(navController: NavHostController) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -100,8 +98,8 @@ fun HomePage(navController: NavHostController, username: String, email: String) 
     var showSignOutConfirmationDialog by remember { mutableStateOf(false) }
 
     // 🔙 Geri tuşuna basınca Sign Out'u tetikle
-    BackHandler {
-        showSignOutConfirmationDialog = true
+    BackHandler(enabled = true) {
+        (context as? ComponentActivity)?.finishAffinity()
     }
 
     ModalNavigationDrawer(
@@ -125,41 +123,18 @@ fun HomePage(navController: NavHostController, username: String, email: String) 
                         modifier = Modifier.padding(16.dp),
                         style = MaterialTheme.typography.titleMedium
                     )
-                    NavigationDrawerItem(
-                        label = { Text("Your Profile") },
-                        selected = false,
-                        icon = { Icon(Icons.Filled.AccountCircle, contentDescription = null) },
-                        onClick = {
-                            navController.navigate(ScreenPersonPage(email))
-                        }
-                    )
+
 
                     NavigationDrawerItem(
                         label = { Text("Rate Our Application") },
                         selected = false,
                         icon = { Icon(Icons.Filled.Star, contentDescription = null) },
                         onClick = {
-                            navController.navigate("rating/$email")
+                            navController.navigate(ScreenRatingPage)
                         }
                     )
 
-                    NavigationDrawerItem(
-                        label = { Text("Delete Account") },
-                        selected = false,
-                        icon = { Icon(Icons.Filled.Close, contentDescription = null) },
-                        onClick = {
-                            showDeleteConfirmationDialog = true
-                        }
-                    )
 
-                    NavigationDrawerItem(
-                        label = { Text("Sign Out") },
-                        selected = false,
-                        icon = { Icon(Icons.Filled.ArrowBack, contentDescription = null) },
-                        onClick = {
-                            showSignOutConfirmationDialog = true
-                        }
-                    )
 
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
@@ -193,7 +168,7 @@ fun HomePage(navController: NavHostController, username: String, email: String) 
                 TopAppBar(
                     title = {
                         Text(
-                            "Welcome $username",
+                            "Welcome",
                             modifier = Modifier.fillMaxWidth(),
                             textAlign = TextAlign.Center,
                             color = MaterialTheme.colorScheme.onSurface,
@@ -237,7 +212,7 @@ fun HomePage(navController: NavHostController, username: String, email: String) 
                         label = { Text("Food Recipes", fontSize = 11.sp) },
                         selected = false,
                         onClick = {
-                            navController.navigate("recipeList/$email")
+                            navController.navigate(Screens.RecipeList)
                         }
                     )
                     NavigationBarItem(
@@ -251,7 +226,7 @@ fun HomePage(navController: NavHostController, username: String, email: String) 
                         label = { Text("My Keep List", fontSize = 11.sp) },
                         selected = false,
                         onClick = {
-                            navController.navigate(Screens.KeepNotePage.ROUTE.replace("{email}", email))
+                            navController.navigate(Screens.KeepNotePage)
                         }
                     )
                     NavigationBarItem(
@@ -357,47 +332,7 @@ fun HomePage(navController: NavHostController, username: String, email: String) 
         }
     }
 
-    // ✅ AlertDialogs
-    if (showDeleteConfirmationDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteConfirmationDialog = false },
-            title = { Text("Delete Account") },
-            text = { Text("Are you sure you want to delete your account?") },
-            confirmButton = {
-                TextButton(onClick = {
-                    deleteUserByEmail(context, email)
-                    Toast.makeText(context, "Account deleted", Toast.LENGTH_SHORT).show()
-                    showDeleteConfirmationDialog = false
-                    navController.navigate(ScreenLoginPage)
-                }) { Text("Yes") }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    showDeleteConfirmationDialog = false
-                }) { Text("Cancel") }
-            }
-        )
-    }
 
-    if (showSignOutConfirmationDialog) {
-        AlertDialog(
-            onDismissRequest = { showSignOutConfirmationDialog = false },
-            title = { Text("Sign Out") },
-            text = { Text("Are you sure you want to sign out?") },
-            confirmButton = {
-                TextButton(onClick = {
-                    Toast.makeText(context, "Signed out", Toast.LENGTH_SHORT).show()
-                    showSignOutConfirmationDialog = false
-                    navController.navigate(ScreenLoginPage)
-                }) { Text("Yes") }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    showSignOutConfirmationDialog = false
-                }) { Text("Cancel") }
-            }
-        )
-    }
 }
 
 @Preview

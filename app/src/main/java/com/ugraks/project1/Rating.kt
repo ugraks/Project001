@@ -39,12 +39,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
 import androidx.navigation.NavHostController
-import com.ugraks.project1.Authenticate.updateOrAddRating
 import kotlinx.coroutines.delay
 
 @Composable
-fun RatingPage(navController: NavHostController, email: String) {
+fun RatingPage(navController: NavController) {
     var rating by remember { mutableStateOf(0) }
     var showThankYouMessage by remember { mutableStateOf(false) }
     var hideStarsAndButton by remember { mutableStateOf(false) }
@@ -107,8 +107,6 @@ fun RatingPage(navController: NavHostController, email: String) {
 
                 Button(
                     onClick = {
-                        // Rating kaydeder
-                        updateOrAddRating(context, email, rating)
                         showThankYouMessage = true
                         hideStarsAndButton = true
                     },

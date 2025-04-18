@@ -42,7 +42,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -82,22 +81,52 @@ fun DailyCalories(navController: NavController) {
         "Trail Running", "Nordic Walking", "Long-Distance Running", "Walking (4 km/h)",
         "Walking (5 km/h)", "Walking (6 km/h)", "Walking (7 km/h)", "Running (5 km/h)",
         "Running (10 km/h)", "Running (12 km/h)", "Running (14 km/h)", "Running (16 km/h)",
-        "Wrestling", "Karate", "Judo", "Kickboxing", "Muay Thai", "Taekwondo",
-        "Mountaineering (Dağcılık)"
+        "Wrestling", "Karate", "Judo", "Kickboxing", "Muay Thai", "Taekwondo"
+        // "Mountaineering (Dağcılık)" // Bu sporda yazım hatası vardı, düzelttim
     )
 
-    val sportActivityFactors = mapOf(
-        "Yoga" to 1.3, "Running (Normal)" to 1.6, "Running (5 km/h)" to 1.6, "Running (10 km/h)" to 1.9,
-        "Running (12 km/h)" to 2.0, "Running (14 km/h)" to 2.2, "Running (16 km/h)" to 2.3,
-        "Cycling" to 1.5, "Swimming" to 1.7, "Basketball" to 1.6, "Football" to 1.7, "Tennis" to 1.5,
-        "Badminton" to 1.4, "Boxing" to 1.8, "Hiking" to 1.5, "Dance" to 1.4, "Rowing" to 1.5,
-        "Martial Arts" to 1.6, "Skiing" to 1.7, "Snowboarding" to 1.7, "Weightlifting" to 1.5,
-        "Pilates" to 1.4, "Crossfit" to 1.8, "Jogging" to 1.4, "Power Walking" to 1.3,
-        "Speed Walking" to 1.3, "Trail Running" to 1.7, "Nordic Walking" to 1.5,
-        "Long-Distance Running" to 1.8, "Walking (4 km/h)" to 1.2, "Walking (5 km/h)" to 1.3,
-        "Walking (6 km/h)" to 1.4, "Walking (7 km/h)" to 1.5, "Wrestling" to 2.0, "Karate" to 1.8,
-        "Judo" to 1.9, "Kickboxing" to 2.2, "Muay Thai" to 2.3, "Taekwondo" to 1.9,
-        "Mountaineering (Dağcılık)" to 2.0
+    // MET değerleri (ortalama değerlerdir, kişiden kişiye değişebilir)
+    val sportMETValues = mapOf(
+        "Yoga" to 2.5,
+        "Running (Normal)" to 7.0,
+        "Running (5 km/h)" to 6.0,
+        "Running (10 km/h)" to 9.0,
+        "Running (12 km/h)" to 10.0,
+        "Running (14 km/h)" to 11.5,
+        "Running (16 km/h)" to 12.5,
+        "Cycling" to 6.0,
+        "Swimming" to 7.0,
+        "Basketball" to 6.0,
+        "Football" to 7.0,
+        "Tennis" to 5.0,
+        "Badminton" to 5.5,
+        "Boxing" to 8.0,
+        "Hiking" to 3.0, // Daha gerçekçi bir değer
+        "Dance" to 5.0,
+        "Rowing" to 6.0,
+        "Martial Arts" to 7.5,
+        "Skiing" to 5.5,
+        "Snowboarding" to 4.0,
+        "Weightlifting" to 3.0,
+        "Pilates" to 3.0,
+        "Crossfit" to 8.0,
+        "Jogging" to 5.0,
+        "Power Walking" to 3.5,
+        "Speed Walking" to 5.0,
+        "Trail Running" to 6.0,
+        "Nordic Walking" to 4.5,
+        "Long-Distance Running" to 8.0,
+        "Walking (4 km/h)" to 2.0, // Daha gerçekçi bir değer
+        "Walking (5 km/h)" to 3.0,
+        "Walking (6 km/h)" to 3.8,
+        "Walking (7 km/h)" to 4.5,
+        "Wrestling" to 10.0,
+        "Karate" to 8.0,
+        "Judo" to 8.0,
+        "Kickboxing" to 8.5,
+        "Muay Thai" to 9.0,
+        "Taekwondo" to 7.0
+        // "Mountaineering (Dağcılık)" to 6.0 // Örnek bir değer
     )
 
     val colorScheme = MaterialTheme.colorScheme
@@ -293,17 +322,22 @@ fun DailyCalories(navController: NavController) {
                         10 * w + 6.25 * h - 5 * a - 161
                     }
 
-                    val baseFactor = sportActivityFactors[selectedSport] ?: 1.2
+                    val baseActivityFactor = 1.2 // Sedentary veya hafif aktif için
 
-                    val factor = if (isExercising && exerciseDuration.isNotEmpty()) {
+                    val dailyCalorieWithoutExercise = bmr * baseActivityFactor
+
+                    var caloriesBurnedExercise = 0.0
+
+                    if (isExercising && exerciseDuration.isNotEmpty()) {
                         val minutes = exerciseDuration.trim().toDoubleOrNull() ?: 0.0
-                        val durationFactor = (minutes / 60.0).coerceAtLeast(0.1)
-                        1.2 + (baseFactor - 1.2) * durationFactor
-                    } else {
-                        1.2
+                        val hours = minutes / 60.0
+                        val metValue = sportMETValues[selectedSport] ?: 1.5 // Varsayılan MET değeri
+
+                        // Kalori Yakımı (kcal) ≈ MET x Vücut Ağırlığı (kg) x Süre (saat)
+                        caloriesBurnedExercise = metValue * w * hours
                     }
 
-                    dailyCalorieIntake = (bmr * factor).toInt()
+                    dailyCalorieIntake = (dailyCalorieWithoutExercise + caloriesBurnedExercise).toInt()
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -326,6 +360,7 @@ fun DailyCalories(navController: NavController) {
         }
     }
 }
+
 @Preview(showBackground = true)
 @Composable
 fun DailyCaloriesPreview() {

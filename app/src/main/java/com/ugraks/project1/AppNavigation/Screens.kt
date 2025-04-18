@@ -5,41 +5,20 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 sealed class Screens(val route : String) {
-    @Serializable
-    object ScreenLoginPage : Screens("ScreenLoginPage")
 
     @Serializable
-    object ForgotPassword  : Screens("ForgotPassword")
-
-    @Serializable
-    object ScreenRatingPage : Screens("rating/{email}")
+    object ScreenRatingPage : Screens("ScreenRatingPage")
 
 
-    @Serializable
-    object RegisterPage    : Screens("RegisterPage")
 
     @Serializable
     object DailyCaloriesPage : Screens("DailyCaloriesPage")
 
 
     @Serializable
-    data class ScreenHomePage(
+    object ScreenHomePage : Screens("ScreenHomePage")
 
-        val username : String,
-        val email : String
 
-        )
-
-    @Serializable
-    data class ScreenPersonPage(
-
-        val email: String
-
-    ) : Screens("PersonPage")
-
-    @Serializable
-    data class ScreenProfileEditPage(
-        val email: String) : Screens("ProfileEditPage")
 
     @Serializable
     object FoodSearchPage : Screens("FoodSearchPage")
@@ -52,16 +31,10 @@ sealed class Screens(val route : String) {
     }
 
     @Serializable
-    data class KeepNotePage(
-        val email: String
-    ) : Screens("KeepNotePage/{email}") {
-        companion object {
-            const val ROUTE = "KeepNotePage/{email}"
-        }
-    }
+    object KeepNotePage : Screens("KeepNotePage")
 
     @Serializable
-    data class RecipeList(val userEmail: String) : Screens("recipeList/{userEmail}")
+    object RecipeList : Screens("RecipeList")
 
     @Serializable
     data class RecipeDetail(val recipeName: String) : Screens("recipeDetail/$recipeName") {

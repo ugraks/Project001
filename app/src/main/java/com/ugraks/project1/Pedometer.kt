@@ -4,65 +4,101 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.VibrationEffect
 import android.os.Vibrator
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity // LocalDensity eklendi
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.TextUnit
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import androidx.navigation.NavHostController
-import com.ugraks.project1.StepCounterService
+import com.ugraks.project1.StepCounterService // StepCounterService ve diğer ilgili sınıfların projenizde tanımlı olduğunu varsayıyorum.
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StepCounterPage(navController: NavHostController) {
     val context = LocalContext.current
+    val density = LocalDensity.current // Mevcut ekran yoğunluğunu al
     val vibrator = remember {
         context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
     }
     val sharedPreferences = remember {
         context.getSharedPreferences("step_counter_prefs", Context.MODE_PRIVATE)
     }
-    var stepCount by remember { mutableStateOf(sharedPreferences.getInt(StepCounterService.STEP_COUNT_KEY, 0)) }
-    var isStarted by remember { mutableStateOf(sharedPreferences.getBoolean(StepCounterService.IS_STARTED_KEY, false)) }
+
+    // State'ler - Mantık aynı kalıyor
+    var stepCount by remember {
+        mutableStateOf(
+            sharedPreferences.getInt(
+                StepCounterService.STEP_COUNT_KEY,
+                0
+            )
+        )
+    }
+    var isStarted by remember {
+        mutableStateOf(
+            sharedPreferences.getBoolean(
+                StepCounterService.IS_STARTED_KEY,
+                false
+            )
+        )
+    }
     var targetStepCountInput by remember { mutableStateOf("") }
     var targetStepCount by remember { mutableStateOf("") }
     var goalReached by remember { mutableStateOf(false) }
-    var isSettingGoal by remember { mutableStateOf(true) } // Başlangıçta hedef belirleme modunda
+    var isSettingGoal by remember { mutableStateOf(true) }
 
+    val colorScheme = MaterialTheme.colorScheme
+    val primaryColor = colorScheme.primary
+    val onPrimaryColor = colorScheme.onPrimary
+    val backgroundColor = colorScheme.background
+    val onBackgroundColor = colorScheme.onBackground
+    val secondaryColor = colorScheme.secondary
+    val onSecondaryColor = colorScheme.onSecondary
+    val errorColor = colorScheme.error
+    val successColor = Color.Green // Hedefe ulaşılınca yeşil renk
+
+    // BroadcastReceiver - Mantık aynı kalıyor
     val stepCountReceiver = remember {
         object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
                 intent?.getIntExtra(StepCounterService.STEP_COUNT_KEY, 0)?.let { newStepCount ->
                     stepCount = newStepCount
-                    if (targetStepCount.isNotEmpty() && newStepCount >= targetStepCount.toInt()) {
-                        goalReached = true
+                    if (targetStepCount.isNotEmpty()) {
+                        val target = targetStepCount.toIntOrNull() ?: 0
+                        val oldGoalReached = goalReached // Önceki durumu sakla
+                        goalReached = newStepCount >= target && target > 0
+                        if (goalReached && !oldGoalReached) { // Hedefe yeni ulaşıldıysa titreşim ver
+                            vibrator.vibrate(
+                                VibrationEffect.createOneShot(
+                                    500,
+                                    VibrationEffect.DEFAULT_AMPLITUDE
+                                )
+                            )
+                        }
                     } else {
                         goalReached = false
                     }
@@ -71,6 +107,7 @@ fun StepCounterPage(navController: NavHostController) {
         }
     }
 
+    // Receiver kaydı ve kaydın silinmesi - Mantık aynı kalıyor
     DisposableEffect(context) {
         val filter = IntentFilter("STEP_COUNT_UPDATED")
         LocalBroadcastManager.getInstance(context).registerReceiver(stepCountReceiver, filter)
@@ -79,6 +116,7 @@ fun StepCounterPage(navController: NavHostController) {
         }
     }
 
+    // Shared Preferences'tan kayıtlı verileri yükleme - Mantık aynı kalıyor
     LaunchedEffect(Unit) {
         stepCount = sharedPreferences.getInt(StepCounterService.STEP_COUNT_KEY, 0)
         isStarted = sharedPreferences.getBoolean(StepCounterService.IS_STARTED_KEY, false)
@@ -86,168 +124,331 @@ fun StepCounterPage(navController: NavHostController) {
         if (savedTarget.isNotEmpty()) {
             targetStepCount = savedTarget
             isSettingGoal = false
-            if (stepCount >= targetStepCount.toInt()) {
-                goalReached = true
-            }
+            val target = targetStepCount.toIntOrNull() ?: 0
+            goalReached = stepCount >= target && target > 0
         }
     }
 
-    Column(
+    // İlerleme Yüzdesi Hesaplama ve Animasyon
+    val target = targetStepCount.toIntOrNull() ?: 0
+    val progress = if (target > 0) minOf(stepCount.toFloat() / target, 1.0f) else 0.0f
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress,
+        animationSpec = tween(
+            durationMillis = 1000,
+            delayMillis = 100
+        ) // Animasyon süresi ve gecikme eklendi
+    )
+
+    // Hedefe ulaşıldığında çubuk rengi animasyonu
+    val progressColor by animateColorAsState(
+        targetValue = if (goalReached) successColor else primaryColor,
+        animationSpec = tween(durationMillis = 500)
+    )
+    // Hedefe ulaşıldığında adım sayısı rengi animasyonu
+    val stepCountColor by animateColorAsState(
+        targetValue = if (goalReached) successColor else onBackgroundColor, // Adım sayısını Card dışına taşıdık, rengini onBackground yapalım
+        animationSpec = tween(durationMillis = 500)
+    )
+
+
+    // Arka plan gradyanı
+    val backgroundBrush = remember {
+        Brush.linearGradient(
+            colors = listOf(
+                colorScheme.primaryContainer,
+                colorScheme.secondaryContainer
+            ) // Temanın belirgin renklerini kullan
+        )
+    }
+
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(24.dp),
+            .background(brush = backgroundBrush) // Arka plana gradyan uygulandı
     ) {
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Box(
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp),
+                .fillMaxSize()
+                .padding(horizontal = 24.dp)
+                .statusBarsPadding()
+                .navigationBarsPadding(),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            IconButton(
-                onClick = { navController.popBackStack() },
-                modifier = Modifier.align(Alignment.CenterStart)
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Başlık ve Geri Butonu
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 24.dp),
             ) {
-                androidx.compose.material3.Icon(
-                    imageVector = Icons.Default.ArrowBack,
-                    contentDescription = "Back",
-                    tint = MaterialTheme.colorScheme.primary
-                )
-            }
-
-            Text(
-                text = "Step Counter",
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.align(Alignment.Center)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp)) // Başlık ile hedef arası boşluk
-
-        if (isSettingGoal) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                OutlinedTextField(
-                    value = targetStepCountInput,
-                    onValueChange = { targetStepCountInput = it },
-                    label = { Text("Target") },
-                    modifier = Modifier.weight(1f)
-                )
-                Button(
-                    onClick = {
-                        if (targetStepCountInput.isNotEmpty()) {
-                            targetStepCount = targetStepCountInput
-                            isSettingGoal = false
-                            sharedPreferences.edit().putString("target_step_count", targetStepCount).apply()
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                IconButton(
+                    onClick = { navController.popBackStack() },
+                    modifier = Modifier.align(Alignment.CenterStart)
                 ) {
-                    Text("Set Goal", color = MaterialTheme.colorScheme.onSecondary)
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = onBackgroundColor // Gradyan üzerinde iyi durması için onBackground
+                    )
                 }
-            }
-        } else {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
+
                 Text(
-                    text = "Goal: $targetStepCount Steps",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.weight(1f)
+                    text = "Step Counter",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = onBackgroundColor, // Gradyan üzerinde iyi durması için onBackground
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.align(Alignment.Center)
                 )
-                Button(
-                    onClick = {
-                        isSettingGoal = true
-                        targetStepCountInput = targetStepCount // Mevcut hedefi inputa geri yükle
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-                ) {
-                    Text("Update", color = MaterialTheme.colorScheme.onSecondary)
+            }
+
+            // Hedef Belirleme veya Gösterim Alanı
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                elevation = CardDefaults.cardElevation(4.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = colorScheme.surface) // Sade yüzey rengi
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    if (isSettingGoal) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            OutlinedTextField(
+                                value = targetStepCountInput,
+                                onValueChange = {
+                                    if (it.all { char -> char.isDigit() }) {
+                                        targetStepCountInput = it
+                                    }
+                                },
+                                label = { Text("Enter Target Steps", color = primaryColor) },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(8.dp),
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = colorScheme.surface,
+                                    unfocusedContainerColor = colorScheme.surface,
+                                    focusedIndicatorColor = primaryColor,
+                                    unfocusedIndicatorColor = Color.Gray, // Daha nötr gri
+                                    cursorColor = primaryColor
+                                ),
+                                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                                )
+                            )
+                            Button(
+                                onClick = {
+                                    if (targetStepCountInput.isNotEmpty() && targetStepCountInput.toIntOrNull() != null && targetStepCountInput.toInt() > 0) { // Hedef 0'dan büyük olmalı kontrolü
+                                        targetStepCount = targetStepCountInput
+                                        isSettingGoal = false
+                                        sharedPreferences.edit()
+                                            .putString("target_step_count", targetStepCount).apply()
+                                        val targetVal = targetStepCount.toInt()
+                                        goalReached = stepCount >= targetVal && targetVal > 0
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = secondaryColor),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("Set Goal", color = onSecondaryColor)
+                            }
+                        }
+                    } else {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            // Hedef ikonu
+                            Icon(
+                                imageVector = Icons.Default.Star, // Yıldız ikonu
+                                contentDescription = "Goal Icon",
+                                tint = primaryColor,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp)) // İkon ile metin arası boşluk
+
+                            Text(
+                                text = "Goal: $targetStepCount Steps",
+                                style = MaterialTheme.typography.titleLarge,
+                                color = onBackgroundColor,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.weight(1f) // Metnin yerleşimi için ağırlık
+                            )
+                            Button(
+                                onClick = {
+                                    isSettingGoal = true
+                                    targetStepCountInput = targetStepCount
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = secondaryColor),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("Update", color = onSecondaryColor)
+                            }
+                        }
+                    }
                 }
             }
-        }
 
-        Spacer(modifier = Modifier.height(24.dp)) // Hedef ile adım sayısı arası boşluk
 
-        Text(
-            text = "Steps: $stepCount",
-            style = MaterialTheme.typography.headlineLarge,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.align(Alignment.CenterHorizontally) // Adım sayısını ortaladık
-        )
+            Spacer(modifier = Modifier.height(32.dp))
 
-        Spacer(modifier = Modifier.height(40.dp))
+            // *** ADIM SAYISI VE İLERLEME ÇUBUĞU ALANI - Geliştirilmiş ***
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(250.dp) // Çap daha da büyütüldü
+                    .padding(16.dp) // Çevresine boşluk
+            ) {
+                // Arka plan çemberi
+                CircularProgressIndicator(
+                    progress = 1f,
+                    strokeWidth = 16.dp, // Çubuk kalınlığı artırıldı
+                    color = colorScheme.surface, // Arka plan rengi surface
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .border(
+                            2.dp,
+                            colorScheme.onSurface.copy(alpha = 0.1f),
+                            CircleShape
+                        ) // Hafif kenarlık
+                )
 
-        Button(
-            onClick = {
-                isStarted = !isStarted
-                val serviceIntent = Intent(context, StepCounterService::class.java)
-                if (isStarted) {
-                    serviceIntent.action = StepCounterService.ACTION_START
-                } else {
-                    serviceIntent.action = StepCounterService.ACTION_STOP
+                // İlerleme çubuğu
+                CircularProgressIndicator(
+                    progress = animatedProgress,
+                    strokeWidth = 16.dp, // Çubuk kalınlığı artırıldı
+                    color = progressColor, // Animasyonlu renk kullanıldı (Hedefe ulaşılınca yeşil olur)
+                    modifier = Modifier.fillMaxSize(),
+                    strokeCap = StrokeCap.Round // Çubuk uçlarını yuvarlak yap
+                )
+
+                // Adım sayısı ve hedef metinleri
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "$stepCount",
+                        style = MaterialTheme.typography.displayMedium, // Boyut ayarlandı
+                        color = stepCountColor, // Animasyonlu renk kullanıldı (Hedefe ulaşılınca yeşil olur)
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                    if (target > 0) { // Hedef varsa göster
+                        Text(
+                            text = "out of $target",
+                            style = MaterialTheme.typography.titleMedium, // Boyut ayarlandı
+                            color = onBackgroundColor // Gradyan üzerinde iyi durması için onBackground
+                        )
+                    }
                 }
-                context.startService(serviceIntent)
-                vibrator.vibrate(
-                    VibrationEffect.createOneShot(
-                        100,
-                        VibrationEffect.DEFAULT_AMPLITUDE
+            }
+            // ****************************************************
+
+
+            Spacer(modifier = Modifier.height(40.dp))
+
+            // Butonlar
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(16.dp) // Butonlar arasına boşluk
+            ) {
+                Button(
+                    onClick = {
+                        isStarted = !isStarted
+                        val serviceIntent = Intent(context, StepCounterService::class.java)
+                        if (isStarted) {
+                            serviceIntent.action = StepCounterService.ACTION_START
+                        } else {
+                            serviceIntent.action = StepCounterService.ACTION_STOP
+                        }
+                        context.startService(serviceIntent)
+                        vibrator.vibrate(
+                            VibrationEffect.createOneShot(
+                                100,
+                                VibrationEffect.DEFAULT_AMPLITUDE
+                            )
+                        )
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isStarted) errorColor else primaryColor, // Duruma göre renk değiştir
+                        contentColor = if (isStarted) colorScheme.onError else onPrimaryColor
+                    ),
+                    shape = RoundedCornerShape(12.dp), // Yuvarlak köşeler
+                    modifier = Modifier.fillMaxWidth().height(56.dp) // Genişlik ve yükseklik ayarı
+                ) {
+                    Text(
+                        text = if (isStarted) "Stop" else "Start",
+                        fontSize = 18.sp, // Yazı boyutu
+                        fontWeight = FontWeight.Bold // Kalın yazı
                     )
-                )
-            },
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-            modifier = Modifier.fillMaxWidth() // Butonları genişlettik
-        ) {
-            Text(
-                text = if (isStarted) "Stop" else "Start",
-                color = MaterialTheme.colorScheme.onPrimary
-            )
-        }
+                }
 
-        Spacer(modifier = Modifier.height(20.dp))
+                Button(
+                    onClick = {
+                        val serviceIntent = Intent(context, StepCounterService::class.java)
+                        serviceIntent.action = StepCounterService.ACTION_RESET
+                        context.startService(serviceIntent)
+                        stepCount = 0
+                        isStarted = false
+                        goalReached = false
+                        targetStepCount = ""
+                        targetStepCountInput = ""
+                        isSettingGoal = true
+                        sharedPreferences.edit().remove("target_step_count").apply()
+                        vibrator.vibrate(
+                            VibrationEffect.createOneShot(
+                                200,
+                                VibrationEffect.DEFAULT_AMPLITUDE
+                            )
+                        )
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = colorScheme.surfaceVariant), // Farklı renk tonu
+                    shape = RoundedCornerShape(12.dp), // Yuvarlak köşeler
+                    modifier = Modifier.fillMaxWidth().height(56.dp) // Genişlik ve yükseklik ayarı
+                ) {
+                    Text(
+                        "Reset",
+                        color = onBackgroundColor,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    ) // Yazı rengi ve stili
+                }
+            }
 
-        Button(
-            onClick = {
-                val serviceIntent = Intent(context, StepCounterService::class.java)
-                serviceIntent.action = StepCounterService.ACTION_RESET
-                context.startService(serviceIntent)
-                stepCount = 0
-                isStarted = false
-                goalReached = false
-                targetStepCount = ""
-                targetStepCountInput = ""
-                isSettingGoal = true // Sıfırlama durumunda tekrar hedef belirleme moduna geç
-                sharedPreferences.edit().remove("target_step_count").apply()
-                vibrator.vibrate(
-                    VibrationEffect.createOneShot(
-                        200,
-                        VibrationEffect.DEFAULT_AMPLITUDE
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Hedefe Ulaşıldı Mesajı veya Diğer Bilgiler
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                if (goalReached) {
+                    Text(
+                        text = "Goal Reached! Congratulations!",
+                        style = MaterialTheme.typography.headlineSmall, // Boyut ayarlandı
+                        color = successColor,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
                     )
-                )
-            },
-            colors = ButtonDefaults.buttonColors(containerColor = Color.Gray),
-            modifier = Modifier.fillMaxWidth() // Butonları genişlettik
-        ) {
-            Text("Reset", color = Color.White)
-        }
+                } else {
+                    // Hedefe ulaşılmadıysa farklı bir mesaj veya boşluk
+                    // Spacer yüksekliğini MaterialTheme.typography.headlineSmall.fontSize'ı kullanarak hesaplayalım
+                    val headlineSmallLineHeight =
+                        with(density) { MaterialTheme.typography.headlineSmall.fontSize.toDp() * 1.5f } // Yaklaşık satır yüksekliği
+                    Spacer(modifier = Modifier.height(headlineSmallLineHeight)) // Yer tutması için
+                }
+            }
 
-        Spacer(modifier = Modifier.height(32.dp))
 
-        if (goalReached) {
-            Text(
-                text = "Congratulations!",
-                style = MaterialTheme.typography.headlineMedium,
-                color = Color.Green,
-                modifier = Modifier.align(Alignment.CenterHorizontally) // Tebrik mesajını ortaladık
-            )
-        }
+            // Alt kısımda kalan boşluğu doldurmak için Spacer(Modifier.weight(1f)) eklenebilir,
+            // ancak bu durumda tüm üstteki öğeler yukarı sıkışır. Mevcut padding ve boşluklarla
+            // orta alana odaklanmak daha iyi olabilir.
+            // Eğer ekran çok büyükse ve altı boş kalıyorsa weight kullanışlı olabilir.
+            // Spacer(modifier = Modifier.weight(1f))
+        } // Ana Column sonu
     }
+
 }

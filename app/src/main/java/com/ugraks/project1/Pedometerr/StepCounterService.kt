@@ -1,8 +1,8 @@
-package com.ugraks.project1
+package com.ugraks.project1.Pedometerr
 
 import android.app.Service
-import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -10,10 +10,8 @@ import android.hardware.SensorManager
 import android.os.IBinder
 import android.os.VibrationEffect
 import android.os.Vibrator
-import android.util.Log
 import android.widget.Toast
-import androidx.localbroadcastmanager.content.LocalBroadcastManager // Bu satır eklendi
-
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
 
 class StepCounterService : Service(), SensorEventListener {
 
@@ -22,7 +20,7 @@ class StepCounterService : Service(), SensorEventListener {
     private var initialStep = -1
     private var stepCount = 0
     private lateinit var vibrator: Vibrator
-    private lateinit var sharedPreferences: android.content.SharedPreferences
+    private lateinit var sharedPreferences: SharedPreferences
     private var isStarted = false
 
     companion object {
@@ -35,10 +33,10 @@ class StepCounterService : Service(), SensorEventListener {
 
     override fun onCreate() {
         super.onCreate()
-        sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
         stepSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR) // Trying STEP_DETECTOR
-        vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-        sharedPreferences = getSharedPreferences("step_counter_prefs", Context.MODE_PRIVATE)
+        vibrator = getSystemService(VIBRATOR_SERVICE) as Vibrator
+        sharedPreferences = getSharedPreferences("step_counter_prefs", MODE_PRIVATE)
         loadState()
     }
 

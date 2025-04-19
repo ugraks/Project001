@@ -8,24 +8,21 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import androidx.navigation.toRoute
 import com.ugraks.project1.AppNavigation.Screens.DailyCaloriesPage
 import com.ugraks.project1.AppNavigation.Screens.KeepNotePage
 import com.ugraks.project1.AppNavigation.Screens.PedoMeterScreen
 import com.ugraks.project1.AppNavigation.Screens.RecipeList
 import com.ugraks.project1.AppNavigation.Screens.ScreenHomePage
-import com.ugraks.project1.AppNavigation.Screens.ScreenRatingPage
-import com.ugraks.project1.DailyCalories
-import com.ugraks.project1.ExerciseListScreen
-import com.ugraks.project1.FoodCaloriesScreen
-import com.ugraks.project1.FoodSearchScreen
-import com.ugraks.project1.HomePage
+import com.ugraks.project1.DailyCalorie.DailyCalories
+import com.ugraks.project1.Fitness.ExerciseListScreen
+import com.ugraks.project1.Foods.FoodCaloriesScreen
+import com.ugraks.project1.Foods.FoodSearchScreen
+import com.ugraks.project1.Home.HomePage
 import com.ugraks.project1.KeepNotePage
-import com.ugraks.project1.MainScreen
-import com.ugraks.project1.RatingPage
-import com.ugraks.project1.RecipeDetailScreen
-import com.ugraks.project1.RecipeListScreen
-import com.ugraks.project1.loadExercisesFromAssets
+import com.ugraks.project1.Fitness.MainScreen
+import com.ugraks.project1.Recipes.RecipeDetailScreen
+import com.ugraks.project1.Recipes.RecipeListScreen
+import com.ugraks.project1.Fitness.loadExercisesFromAssets
 
 
 @Composable
@@ -50,10 +47,7 @@ fun SayfaGecisleri() {
 
         }
 
-        composable<ScreenRatingPage> {
 
-            RatingPage(navController)
-        }
 
 
 

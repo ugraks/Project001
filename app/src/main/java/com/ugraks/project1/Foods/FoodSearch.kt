@@ -1,4 +1,4 @@
-package com.ugraks.project1
+package com.ugraks.project1.Foods
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -43,7 +43,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-
 
 
 @OptIn(ExperimentalMaterial3Api::class)

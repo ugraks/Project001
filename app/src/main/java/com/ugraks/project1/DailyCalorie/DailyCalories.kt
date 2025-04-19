@@ -1,4 +1,4 @@
-package com.ugraks.project1
+package com.ugraks.project1.DailyCalorie
 
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -15,16 +15,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.ContentAlpha
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.rememberScaffoldState
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
@@ -35,21 +32,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Snackbar
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -58,7 +48,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import kotlinx.coroutines.launch
 
 @Composable
 fun DailyCalories(navController: NavController) {
@@ -81,8 +70,7 @@ fun DailyCalories(navController: NavController) {
         "Trail Running", "Nordic Walking", "Long-Distance Running", "Walking (4 km/h)",
         "Walking (5 km/h)", "Walking (6 km/h)", "Walking (7 km/h)", "Running (5 km/h)",
         "Running (10 km/h)", "Running (12 km/h)", "Running (14 km/h)", "Running (16 km/h)",
-        "Wrestling", "Karate", "Judo", "Kickboxing", "Muay Thai", "Taekwondo"
-        // "Mountaineering (Dağcılık)" // Bu sporda yazım hatası vardı, düzelttim
+        "Wrestling", "Karate", "Judo", "Kickboxing", "Muay Thai", "Taekwondo", "Mountaineering"
     )
 
     // MET değerleri (ortalama değerlerdir, kişiden kişiye değişebilir)

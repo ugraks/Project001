@@ -7,11 +7,6 @@ import kotlinx.serialization.Serializable
 sealed class Screens(val route : String) {
 
     @Serializable
-    object ScreenRatingPage : Screens("ScreenRatingPage")
-
-
-
-    @Serializable
     object DailyCaloriesPage : Screens("DailyCaloriesPage")
 
 

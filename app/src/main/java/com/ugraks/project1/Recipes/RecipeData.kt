@@ -1,7 +1,8 @@
-package com.ugraks.project1.Authenticate
+package com.ugraks.project1.Recipes
 
 
 import android.content.Context
+import com.ugraks.project1.R
 
 
 fun readRecipesFromAssets(context: Context): List<Recipe> {
@@ -66,5 +67,16 @@ data class Recipe(
     val ingredients: List<String>,
     val instructions: String
 )
+
+fun getRecipeImageResource(recipeName: String): Int {
+    return when (recipeName) {
+        "Spaghetti Carbonara" -> R.drawable.spagetti_carbonara // Kendi drawable isimlerinizle değiştirin
+        //"Tomato Soup" -> R.drawable.tomato_soup // Kendi drawable isimlerinizle değiştirin
+        //"Chicken Curry" -> R.drawable.chicken_curry // Kendi drawable isimlerinizle değiştirin
+        //"Turkish Lentil Soup" -> R.drawable.turkish_lentil_soup // Örnek bir Türk yemeği görseli
+
+        else -> R.drawable.baseline_restaurant_24 // Varsayılan bir görsel (drawable klasörünüzde olmalı)
+    }
+}
 
 

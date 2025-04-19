@@ -30,7 +30,7 @@
             </intent-filter>
         </activity>
 
-        <service android:name=".StepCounterService" />
+        <service android:name=".Pedometerr.StepCounterService" />
 
         <provider
             android:name="androidx.startup.InitializationProvider"

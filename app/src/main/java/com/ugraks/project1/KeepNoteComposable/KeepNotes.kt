@@ -1,23 +1,14 @@
 @file:OptIn(ExperimentalMaterial3Api::class)
 
-package com.ugraks.project1
+package com.ugraks.project1 // Paket adınızı kontrol edin
 
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn // Dıştaki LazyColumn için import
-import androidx.compose.foundation.lazy.itemsIndexed // Kayıt listesi için
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -26,28 +17,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.Divider
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -60,104 +31,60 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import com.ugraks.project1.KeepNoteComposable.CalorieRecord
+import com.ugraks.project1.KeepNoteComposable.FoodItemKeepNote
+import com.ugraks.project1.KeepNoteComposable.loadCalorieRecords
+import com.ugraks.project1.KeepNoteComposable.readFoodItemsFromAssets
+import com.ugraks.project1.KeepNoteComposable.saveCalorieRecords
+import java.io.File
 import java.io.InputStreamReader
 import java.util.Locale
 import kotlin.math.roundToInt
-
-// Data classes (unchanged)
-data class FoodItemKeepNote(
-    val name: String,
-    val calories: Int, // Calories per 1000 units (kg or ml)
-    val type: String, // "Food" or "Drink"
-    val proteinPerKgL: Double, // Grams of protein per 1000 units (kg or L)
-    val fatPerKgL: Double,     // Grams of fat per 1000 units (kg or L)
-    val carbPerKgL: Double     // Grams of carbs per 1000 units (kg or L)
-)
-
-data class CalorieRecord(
-    val foodItem: FoodItemKeepNote, // Stores the item details (name, original calories per 1000, type, P/F/C per 1000)
-    val quantity: Double,
-    val unit: String, // "g", "kg", "ml", "L"
-    val time: String,
-    val calories: Int, // Total calories for this specific record
-    val protein: Double, // Total protein for this specific record
-    val fat: Double,     // Total fat for this specific record
-    val carb: Double     // Total carb for this specific record
-)
-
-// Function to read food items from assets (unchanged)
-fun readFoodItemsFromAssets(context: Context): List<FoodItemKeepNote> {
-    val items = mutableListOf<FoodItemKeepNote>()
-    try {
-        val inputStream = context.assets.open("items.txt")
-        InputStreamReader(inputStream).forEachLine { line ->
-            val parts = line.split(",")
-            if (parts.size == 6) { // Expect 6 parts now (item,calories,type,protein_g,fat_g,carb_g)
-                val itemName = parts[0].split(":")[1].trim()
-                val calories = parts[1].split(":")[1].trim().toIntOrNull() ?: 0
-                val itemType = parts[2].split(":")[1].trim()
-                val protein = parts[3].split(":")[1].trim().toDoubleOrNull() ?: 0.0 // Read protein
-                val fat = parts[4].split(":")[1].trim().toDoubleOrNull() ?: 0.0     // Read fat
-                val carb = parts[5].split(":")[1].trim().toDoubleOrNull() ?: 0.0     // Read carbs
-
-                // Assuming calories, protein_g, fat_g, carb_g in items.txt are per 1 kg or 1 Liter (1000 units)
-                items.add(FoodItemKeepNote(itemName, calories, itemType, protein, fat, carb))
-            } else {
-                // Log an error or warning for malformed lines
-                println("Skipping malformed line in items.txt: $line")
-            }
-        }
-    } catch (e: Exception) {
-        e.printStackTrace()
-    }
-    return items
-}
-
 
 @Composable
 fun KeepNotePage(navController: NavHostController) {
     val context = LocalContext.current
 
-    // State management (unchanged)
+    // State management (Durum yönetimi)
     val allFoodItems = remember { mutableStateListOf<FoodItemKeepNote>() }
+    // calorieRecords başlangıçta boş değil, LaunchedEffect ile dosyadan yüklenecek
     val calorieRecords = remember { mutableStateListOf<CalorieRecord>() }
 
     var isManualEntryMode by remember { mutableStateOf(false) }
 
-    // Search and Normal Input States (unchanged)
+    // Search and Normal Input States (Arama ve Normal Giriş Durumları)
     var searchText by remember { mutableStateOf("") }
     var selectedFoodItem by remember { mutableStateOf<FoodItemKeepNote?>(null) }
 
-    // Common Input States (Used for both normal and manual entry - unchanged)
+    // Common Input States (Ortak Giriş Durumları - Hem normal hem manuel için)
     var quantity by remember { mutableStateOf("") }
-    var isKilogram by remember { mutableStateOf(false) }
-    var isLiter by remember { mutableStateOf(false) }
+    var isKilogram by remember { mutableStateOf(false) } // Normal Food
+    var isLiter by remember { mutableStateOf(false) } // Normal Drink
     var time by remember { mutableStateOf("") }
 
-    // Manual Entry States (unchanged)
+    // Manual Entry States (Manuel Giriş Durumları)
     var manualFoodName by remember { mutableStateOf("") }
     var manualSelectedType by remember { mutableStateOf("Food") } // Default Food
     var selectedManualUnit by remember { mutableStateOf("g") } // Default to grams initially for manual mode
-    var manualCaloriesInput by remember { mutableStateOf("") }
-    var manualProteinInput by remember { mutableStateOf("") }
-    var manualFatInput by remember { mutableStateOf("") }
-    var manualCarbInput by remember { mutableStateOf("") }
+    var manualCaloriesInput by remember { mutableStateOf("") } // Total calories for the portion
+    var manualProteinInput by remember { mutableStateOf("") }   // Total protein for the portion
+    var manualFatInput by remember { mutableStateOf("") }       // Total fat for the portion
+    var manualCarbInput by remember { mutableStateOf("") }     // Total carbs for the portion
 
 
-    // State for Dialogs (unchanged)
+    // State for Dialogs (Dialog Durumları)
     var showClearConfirmationDialog by remember { mutableStateOf(false) }
     var selectedRecordToDelete by remember { mutableStateOf<CalorieRecord?>(null) }
     var showDeleteConfirmationDialog by remember { mutableStateOf(false) }
 
-    // State for Total Calories - Explicitly managed (unchanged)
+    // State for Total Calories/Macros (Toplam Kalori/Makro Durumları) - Explicitly managed
     var totalCalories by remember { mutableStateOf(0) }
-    // State for Total Macros (unchanged)
     var totalProtein by remember { mutableStateOf(0.0) }
     var totalFat by remember { mutableStateOf(0.0) }
     var totalCarb by remember { mutableStateOf(0.0) }
 
 
-    // Color scheme (unchanged)
+    // Color scheme (Renk Şeması)
     val colorScheme = MaterialTheme.colorScheme
     val primaryColor = colorScheme.primary
     val backgroundColor = colorScheme.background
@@ -167,12 +94,16 @@ fun KeepNotePage(navController: NavHostController) {
     val onPrimaryColor = colorScheme.onPrimary
 
 
-    // Read assets file on initial composition (unchanged)
+    // LaunchedEffect: Uygulama ilk açıldığında veya bu Composable ilk oluşturulduğunda çalışır
     LaunchedEffect(Unit) {
+        // 1. Assets dosyasından tüm yiyecekleri oku
         allFoodItems.addAll(readFoodItemsFromAssets(context))
+        // 2. Kayıtları dosyadan yükle ve listeye ekle
+        val loaded = loadCalorieRecords(context) // Dosyadan yükleme fonksiyonu çağrısı
+        calorieRecords.addAll(loaded)
     }
 
-    // Filter food items based on search text (unchanged)
+    // filteredFoodList: Arama metnine göre filtrelenmiş yiyecek listesi (BU TANIM BU COMPSABLE İÇİNDE OLMALIDIR)
     val filteredFoodList = remember(allFoodItems, searchText) {
         if (searchText.isEmpty()) {
             emptyList()
@@ -181,7 +112,8 @@ fun KeepNotePage(navController: NavHostController) {
         }
     }
 
-    // Effect to update totals whenever calorieRecords changes (unchanged)
+
+    // Effect to update totals whenever calorieRecords changes (Kayıtlar değişince toplamları güncelle)
     LaunchedEffect(calorieRecords.size) {
         totalCalories = calorieRecords.sumOf { it.calories }
         totalProtein = calorieRecords.sumOf { it.protein }
@@ -189,7 +121,7 @@ fun KeepNotePage(navController: NavHostController) {
         totalCarb = calorieRecords.sumOf { it.carb }
     }
 
-    // Effect to reset manual unit when manual type changes (unchanged)
+    // Effect to reset manual unit when manual type changes (Manuel tip değişince birimi sıfırla)
     LaunchedEffect(manualSelectedType) {
         selectedManualUnit = if (manualSelectedType == "Food") "g" else "ml"
     }
@@ -200,21 +132,18 @@ fun KeepNotePage(navController: NavHostController) {
             .fillMaxSize()
             .background(backgroundColor)
     ) {
-        // Replace main Column with LazyColumn for overall scrolling
+        // LazyColumn: Tüm içeriğin kaydırılabilir olmasını sağlar
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                // Apply padding directly to LazyColumn
                 .padding(horizontal = 20.dp, vertical = 24.dp),
-            // Remove Arrangement.SpaceBetween from the outer column, it's not needed in LazyColumn
-            // Remove verticalAlignment from outer column
         ) {
-            // Item for Top Bar: Back and Clear
+            // Item for Top Bar: Back and Clear (Üst Bar)
             item {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 16.dp), // Keep bottom padding for separation
+                        .padding(bottom = 16.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -269,19 +198,18 @@ fun KeepNotePage(navController: NavHostController) {
             }
 
 
-            // Items for Normal Entry UI (Hidden in Manual Entry Mode)
+            // Items for Normal Entry UI (Normal Giriş Alanları - Manuel Modda Gizli)
             if (!isManualEntryMode) {
                 // --- Normal Entry UI ---
-                // Create a local copy of selectedFoodItem for safe access within this UI block
                 val currentSelectedItem = selectedFoodItem
 
-                // Item for Search Bar
+                // Item for Search Bar (Arama Çubuğu)
                 item {
                     OutlinedTextField(
                         value = searchText,
                         onValueChange = {
                             searchText = it
-                            selectedFoodItem = null // Clear selection state
+                            selectedFoodItem = null // Seçimi temizle
                             quantity = ""
                             time = ""
                             isKilogram = false
@@ -316,10 +244,10 @@ fun KeepNotePage(navController: NavHostController) {
                     )
                 }
 
-                // Item(s) for Search Results or Offer Manual Entry
-                if (searchText.isNotEmpty() && selectedFoodItem == null) { // selectedFoodItem != null check is correct here
+                // Item(s) for Search Results or Offer Manual Entry (Arama Sonuçları veya Manuel Giriş Teklifi)
+                if (searchText.isNotEmpty() && selectedFoodItem == null) {
                     if (filteredFoodList.isEmpty()) {
-                        // No search results found, offer manual entry (as a single item block)
+                        // No search results found, offer manual entry
                         item {
                             Column(
                                 modifier = Modifier
@@ -336,6 +264,7 @@ fun KeepNotePage(navController: NavHostController) {
                                 Button(
                                     onClick = {
                                         isManualEntryMode = true
+                                        // Alanları temizle
                                         searchText = ""
                                         selectedFoodItem = null
                                         quantity = ""
@@ -355,7 +284,7 @@ fun KeepNotePage(navController: NavHostController) {
                             }
                         }
                     } else {
-                        // Display Search Results (as separate items within the LazyColumn)
+                        // Display Search Results
                         itemsIndexed(filteredFoodList) { index, item ->
                             Column(
                                 modifier = Modifier
@@ -368,11 +297,11 @@ fun KeepNotePage(navController: NavHostController) {
                                         if (index == 0) RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp) else if (index == filteredFoodList.lastIndex) RoundedCornerShape(bottomStart = 12.dp, bottomEnd = 12.dp) else RoundedCornerShape(0.dp)
                                     )
                                     .clickable {
-                                        selectedFoodItem = item // Setting the state here
-                                        searchText = item.name
+                                        selectedFoodItem = item // Seçimi ayarla
+                                        searchText = item.name // Arama çubuğunu güncelle
                                         quantity = ""
                                         time = ""
-                                        if (item.type == "Food") { isKilogram = false; isLiter = false } else { isKilogram = false; isLiter = true }
+                                        if (item.type == "Food") { isKilogram = false; isLiter = false } else { isKilogram = false; isLiter = true } // Varsayılan birimi ayarla
                                     }
                                     .padding(12.dp)
                             ) {
@@ -393,7 +322,7 @@ fun KeepNotePage(navController: NavHostController) {
                 }
 
 
-                // Item for Quantity Input
+                // Item for Quantity Input (Miktar Girişi)
                 item {
                     OutlinedTextField(
                         value = quantity,
@@ -409,12 +338,12 @@ fun KeepNotePage(navController: NavHostController) {
                             focusedIndicatorColor = primaryColor, unfocusedIndicatorColor = Color.Gray, cursorColor = primaryColor
                         ),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        enabled = currentSelectedItem != null // Use local copy for enabled
+                        enabled = currentSelectedItem != null // Sadece yiyecek seçiliyse aktif
                     )
                 }
 
-                // Item for Unit Selection (Normal Mode - Original Checkboxes)
-                if (currentSelectedItem?.type == "Food" || currentSelectedItem?.type == "Drink") { // Use local copy for type check
+                // Item for Unit Selection (Birim Seçimi - Normal Mod)
+                if (currentSelectedItem?.type == "Food" || currentSelectedItem?.type == "Drink") {
                     item {
                         Row(
                             modifier = Modifier
@@ -424,22 +353,22 @@ fun KeepNotePage(navController: NavHostController) {
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             Text(text = "Unit:", color = primaryColor, fontWeight = FontWeight.Medium)
-                            if (currentSelectedItem.type == "Food") { // Use local copy
+                            if (currentSelectedItem.type == "Food") {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Checkbox( checked = isKilogram, onCheckedChange = { isKilogram = it; if (it) isLiter = false }, enabled = currentSelectedItem != null ) // Use local copy
+                                    Checkbox( checked = isKilogram, onCheckedChange = { isKilogram = it; if (it) isLiter = false }, enabled = currentSelectedItem != null )
                                     Text(text = "Kilogram (kg)", style = MaterialTheme.typography.bodyMedium, color = contentColor)
                                 }
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Checkbox( checked = !isKilogram, onCheckedChange = { isKilogram = !it; if (!it) isLiter = false }, enabled = currentSelectedItem != null ) // Use local copy
+                                    Checkbox( checked = !isKilogram, onCheckedChange = { isKilogram = !it; if (!it) isLiter = false }, enabled = currentSelectedItem != null )
                                     Text(text = "Gram (g)", style = MaterialTheme.typography.bodyMedium, color = contentColor)
                                 }
-                            } else if (currentSelectedItem.type == "Drink") { // Use local copy
+                            } else if (currentSelectedItem.type == "Drink") {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Checkbox( checked = isLiter, onCheckedChange = { isLiter = it; if (it) isKilogram = false }, enabled = currentSelectedItem != null ) // Use local copy
+                                    Checkbox( checked = isLiter, onCheckedChange = { isLiter = it; if (it) isKilogram = false }, enabled = currentSelectedItem != null )
                                     Text(text = "Litre (L)", style = MaterialTheme.typography.bodyMedium, color = contentColor)
                                 }
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Checkbox( checked = !isLiter, onCheckedChange = { isLiter = !it; if (!it) isKilogram = false }, enabled = currentSelectedItem != null ) // Use local copy
+                                    Checkbox( checked = !isLiter, onCheckedChange = { isLiter = !it; if (!it) isKilogram = false }, enabled = currentSelectedItem != null )
                                     Text(text = "Milliliter (ml)", style = MaterialTheme.typography.bodyMedium, color = contentColor)
                                 }
                             }
@@ -448,7 +377,7 @@ fun KeepNotePage(navController: NavHostController) {
                 }
 
 
-                // Item for Time Input
+                // Item for Time Input (Zaman Girişi)
                 item {
                     OutlinedTextField(
                         value = time,
@@ -462,15 +391,15 @@ fun KeepNotePage(navController: NavHostController) {
                             focusedContainerColor = colorScheme.surface, unfocusedContainerColor = colorScheme.surface,
                             focusedIndicatorColor = primaryColor, unfocusedIndicatorColor = Color.Gray, cursorColor = primaryColor
                         ),
-                        enabled = currentSelectedItem != null // Use local copy for enabled
+                        enabled = currentSelectedItem != null // Sadece yiyecek seçiliyse aktif
                     )
                 }
 
-                // Item for Spacer before Button
+                // Item for Spacer before Button (Butondan önce boşluk)
                 item { Spacer(modifier = Modifier.height(20.dp)) }
 
 
-            } else { // --- Manual Entry UI --- (Items within LazyColumn)
+            } else { // --- Manual Entry UI --- (Manuel Giriş Alanları)
 
                 item {
                     Text(
@@ -483,7 +412,7 @@ fun KeepNotePage(navController: NavHostController) {
                     )
                 }
 
-                // Item for Manual Food/Drink Name Input
+                // Item for Manual Food/Drink Name Input (Manuel İsim Girişi)
                 item {
                     OutlinedTextField(
                         value = manualFoodName,
@@ -497,7 +426,7 @@ fun KeepNotePage(navController: NavHostController) {
 
                 item { Spacer(modifier = Modifier.height(12.dp)) }
 
-                // Item for Manual Type Selection (Food/Drink) - Radio Buttons
+                // Item for Manual Type Selection (Manuel Tip Seçimi - Food/Drink)
                 item {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -517,7 +446,7 @@ fun KeepNotePage(navController: NavHostController) {
 
                 item { Spacer(modifier = Modifier.height(12.dp)) }
 
-                // Item for Quantity Input (Manual Mode)
+                // Item for Quantity Input (Manuel Mod Miktar Girişi)
                 item {
                     OutlinedTextField(
                         value = quantity,
@@ -533,7 +462,7 @@ fun KeepNotePage(navController: NavHostController) {
                     )
                 }
 
-                // Item for Unit Selection (Manual Mode) - Radio Buttons
+                // Item for Unit Selection (Manuel Mod Birim Seçimi)
                 item {
                     Row(
                         modifier = Modifier
@@ -564,7 +493,7 @@ fun KeepNotePage(navController: NavHostController) {
                     }
                 }
 
-                // Item for Time Input (Manual Mode)
+                // Item for Time Input (Manuel Mod Zaman Girişi)
                 item {
                     OutlinedTextField(
                         value = time,
@@ -580,7 +509,7 @@ fun KeepNotePage(navController: NavHostController) {
 
                 item { Spacer(modifier = Modifier.height(12.dp)) }
 
-                // Item for Manual Total Calories Input
+                // Item for Manual Total Calories Input (Manuel Toplam Kalori Girişi)
                 item {
                     OutlinedTextField(
                         value = manualCaloriesInput,
@@ -593,9 +522,9 @@ fun KeepNotePage(navController: NavHostController) {
                     )
                 }
 
-                item { Spacer(modifier = Modifier.height(12.dp)) } // Space before Manual P/F/C
+                item { Spacer(modifier = Modifier.height(12.dp)) } // Manuel P/F/C öncesi boşluk
 
-                // Items for MANUAL P/F/C INPUTS
+                // Items for MANUAL P/F/C INPUTS (Manuel Makro Girişleri)
                 item {
                     OutlinedTextField(
                         value = manualProteinInput,
@@ -646,28 +575,28 @@ fun KeepNotePage(navController: NavHostController) {
             }
 
 
-            // Item for Add to List Button
+            // Item for Add to List Button (Listeye Ekle Butonu)
             item {
                 Button(
                     onClick = {
                         val quantityValue = quantity.toDoubleOrNull() ?: 0.0
-                        val item = selectedFoodItem // Local copy for onClick
+                        val item = selectedFoodItem // onClick içinde kullanılacak yerel kopya
 
-                        // Determine the scaling factor based on the selected unit (kg/L vs g/ml)
+                        // Birim seçimine göre ölçeklendirme faktörünü belirle
                         val unitScale = when {
                             isManualEntryMode -> when(selectedManualUnit) {
                                 "kg", "L" -> quantityValue
                                 "g", "ml" -> quantityValue / 1000.0
-                                else -> 0.0
+                                else -> 0.0 // Olmaması gereken durum
                             }
                             !isManualEntryMode && item != null -> when(
                                 if (item.type == "Food") { if (isKilogram) "kg" else "g" } else { if (isLiter) "L" else "ml" }
                             ) {
                                 "kg", "L" -> quantityValue
                                 "g", "ml" -> quantityValue / 1000.0
-                                else -> 0.0
+                                else -> 0.0 // Olmaması gereken durum
                             }
-                            else -> 0.0
+                            else -> 0.0 // Normal modda item null ise
                         }
 
 
@@ -677,24 +606,28 @@ fun KeepNotePage(navController: NavHostController) {
                             val manualFat = manualFatInput.toDoubleOrNull() ?: 0.0
                             val manualCarb = manualCarbInput.toDoubleOrNull() ?: 0.0
 
-                            // Manual validation including macros
+                            // Manuel giriş alanlarının boş olmadığını, miktar > 0 olduğunu ve zamanın boş olmadığını kontrol et
                             if (manualFoodName.isNotEmpty() && quantityValue > 0 && time.isNotEmpty() && manualCaloriesInput.isNotEmpty() && manualProteinInput.isNotEmpty() && manualFatInput.isNotEmpty() && manualCarbInput.isNotEmpty()) {
-                                // Further check parsed values are non-negative
+                                // Ayrıştırılan değerlerin negatif olmadığını kontrol et
                                 if (manualCalories >= 0 && manualProtein >= 0.0 && manualFat >= 0.0 && manualCarb >= 0.0) {
                                     val unit = selectedManualUnit
                                     calorieRecords.add(
                                         CalorieRecord(
+                                            // Manuel giriş olduğu için orijinal besin değerleri 0 olarak kaydediliyor, toplamlar Record içinde tutuluyor
                                             foodItem = FoodItemKeepNote(manualFoodName, 0, manualSelectedType, 0.0, 0.0, 0.0),
                                             quantity = quantityValue,
                                             unit = unit,
                                             time = time,
-                                            calories = manualCalories,
-                                            protein = manualProtein,
-                                            fat = manualFat,
-                                            carb = manualCarb
+                                            calories = manualCalories, // Kullanıcının girdiği toplam kalori
+                                            protein = manualProtein,   // Kullanıcının girdiği toplam protein
+                                            fat = manualFat,         // Kullanıcının girdiği toplam yağ
+                                            carb = manualCarb        // Kullanıcının girdiği toplam karbonhidrat
                                         )
                                     )
-                                    // Clear fields after adding
+                                    // Kayıt listesi güncellendikten sonra DOSYAYA KAYDET
+                                    saveCalorieRecords(context, calorieRecords.toList())
+
+                                    // Alanları temizle
                                     isManualEntryMode = false
                                     manualFoodName = ""
                                     manualCaloriesInput = ""
@@ -710,13 +643,16 @@ fun KeepNotePage(navController: NavHostController) {
                                     searchText = ""
                                     selectedFoodItem = null
                                 } else {
-                                    // Handle validation error: negative numbers
+                                    // Hata yönetimi: negatif sayılar
+                                    println("Validation Error: Manual entry values must be non-negative.")
                                 }
                             } else {
-                                // Handle validation error: empty required fields
+                                // Hata yönetimi: boş bırakılan alanlar
+                                println("Validation Error: Please fill all required fields for manual entry.")
                             }
                         } else {
-                            // Normal Entry Mode
+                            // Normal Giriş Modu
+                            // Yiyecek seçili olduğunu, miktar alanının boş olmadığını, miktarın > 0 olduğunu ve zamanın boş olmadığını kontrol et
                             if (item != null && quantity.isNotEmpty() && quantityValue > 0 && time.isNotEmpty()) {
                                 val caloriesPer1000Units = item.calories.toDouble()
                                 val proteinPer1000Units = item.proteinPerKgL
@@ -731,9 +667,21 @@ fun KeepNotePage(navController: NavHostController) {
                                 val unit = if (item.type == "Food") { if (isKilogram) "kg" else "g" } else { if (isLiter) "L" else "ml" }
 
                                 calorieRecords.add(
-                                    CalorieRecord( foodItem = item, quantity = quantityValue, unit = unit, time = time, calories = calculatedCalories, protein = calculatedProtein, fat = calculatedFat, carb = calculatedCarb )
+                                    CalorieRecord(
+                                        foodItem = item, // items.txt'den gelen orijinal item
+                                        quantity = quantityValue,
+                                        unit = unit,
+                                        time = time,
+                                        calories = calculatedCalories, // Hesaplanan toplam kalori
+                                        protein = calculatedProtein,   // Hesaplanan toplam protein
+                                        fat = calculatedFat,         // Hesaplanan toplam yağ
+                                        carb = calculatedCarb        // Hesaplanan toplam karbonhidrat
+                                    )
                                 )
-                                // Clear fields after adding
+                                // Kayıt listesi güncellendikten sonra DOSYAYA KAYDET
+                                saveCalorieRecords(context, calorieRecords.toList())
+
+                                // Alanları temizle
                                 selectedFoodItem = null
                                 searchText = ""
                                 quantity = ""
@@ -741,24 +689,26 @@ fun KeepNotePage(navController: NavHostController) {
                                 isKilogram = false
                                 isLiter = false
                             } else {
-                                // Handle validation error
+                                // Hata yönetimi
+                                println("Validation Error: Please select a food, enter a quantity, and time.")
                             }
                         }
                     },
+                    // Butonun aktif olup olmayacağını belirleyen koşullar
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(50.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = androidx.compose.material3.ButtonDefaults.buttonColors( containerColor = primaryColor, contentColor = onPrimaryColor ),
                     enabled = if (isManualEntryMode) {
+                        // Manuel modda tüm gerekli alanların dolu ve geçerli olduğunu kontrol et
                         manualFoodName.isNotEmpty() && quantity.toDoubleOrNull() != null && quantity.toDoubleOrNull()!! > 0 && time.isNotEmpty() &&
-                                manualCaloriesInput.toIntOrNull() != null && manualCaloriesInput.toIntOrNull()!! >= 0 && // Allow 0 calories
-                                manualProteinInput.toDoubleOrNull() != null && manualProteinInput.toDoubleOrNull()!! >= 0.0 && // Allow 0g macros
-                                manualFatInput.toDoubleOrNull() != null && manualFatInput.toDoubleOrNull()!! >= 0.0 &&
-                                manualCarbInput.toDoubleOrNull() != null && manualCarbInput.toDoubleOrNull()!! >= 0.0 &&
-                                // Check if input strings are non-empty (required fields)
-                                manualCaloriesInput.isNotEmpty() && manualProteinInput.isNotEmpty() && manualFatInput.isNotEmpty() && manualCarbInput.isNotEmpty()
+                                manualCaloriesInput.isNotEmpty() && manualCaloriesInput.toIntOrNull() != null && manualCaloriesInput.toIntOrNull()!! >= 0 && // 0 kaloriye izin ver
+                                manualProteinInput.isNotEmpty() && manualProteinInput.toDoubleOrNull() != null && manualProteinInput.toDoubleOrNull()!! >= 0.0 && // 0g makroya izin ver
+                                manualFatInput.isNotEmpty() && manualFatInput.toDoubleOrNull() != null && manualFatInput.toDoubleOrNull()!! >= 0.0 &&
+                                manualCarbInput.isNotEmpty() && manualCarbInput.toDoubleOrNull() != null && manualCarbInput.toDoubleOrNull()!! >= 0.0
                     } else {
+                        // Normal modda yiyecek seçili olduğunu ve miktar ile zamanın geçerli olduğunu kontrol et
                         selectedFoodItem != null && quantity.toDoubleOrNull() != null && quantity.toDoubleOrNull()!! > 0 && time.isNotEmpty()
                     }
                 ) {
@@ -767,7 +717,7 @@ fun KeepNotePage(navController: NavHostController) {
             }
 
 
-            // Item for Calorie Records Header
+            // Item for Calorie Records Header (Kayıtlar Başlığı)
             item {
                 Text(
                     text = "My Records",
@@ -780,7 +730,7 @@ fun KeepNotePage(navController: NavHostController) {
             }
 
 
-            // Items for Calorie Records List (Use itemsIndexed)
+            // Items for Calorie Records List (Kayıtlar Listesi)
             itemsIndexed(calorieRecords) { index, record ->
                 Card(
                     modifier = Modifier
@@ -806,7 +756,7 @@ fun KeepNotePage(navController: NavHostController) {
                                 text = "${record.quantity} ${record.unit} - ${record.time}",
                                 style = MaterialTheme.typography.bodyMedium, color = contentColor
                             )
-                            // Display Protein, Fat, Carb below Quantity/Time if non-zero
+                            // Makro toplamlarını göster (Sıfırdan büyükse)
                             if (record.protein > 0.0 || record.fat > 0.0 || record.carb > 0.0) {
                                 Text(
                                     text = "P: ${record.protein.roundToInt()}g, F: ${record.fat.roundToInt()}g, C: ${record.carb.roundToInt()}g",
@@ -820,6 +770,7 @@ fun KeepNotePage(navController: NavHostController) {
                                 text = "${record.calories} kcal",
                                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold), color = primaryColor
                             )
+                            // Silme butonu
                             IconButton( onClick = { selectedRecordToDelete = record; showDeleteConfirmationDialog = true } ) {
                                 Icon( imageVector = Icons.Outlined.Delete, contentDescription = "Delete Record", tint = primaryColor )
                             }
@@ -828,7 +779,7 @@ fun KeepNotePage(navController: NavHostController) {
                 }
             }
 
-            // Item for TOTAL CALORIES AND MACROS DISPLAY
+            // Item for TOTAL CALORIES AND MACROS DISPLAY (Toplamları Gösterme Alanı)
             item {
                 Card(
                     modifier = Modifier
@@ -851,7 +802,7 @@ fun KeepNotePage(navController: NavHostController) {
                             text = "Calories: $totalCalories kcal",
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                         )
-                        // Only display macro totals if they are non-zero
+                        // Makro toplamlarını sadece sıfırdan büyükse göster
                         if (totalProtein > 0.0 || totalFat > 0.0 || totalCarb > 0.0) {
                             Spacer(modifier = Modifier.height(4.dp))
                             Text( text = "Protein: ${totalProtein.roundToInt()}g", style = MaterialTheme.typography.bodyMedium )
@@ -861,18 +812,20 @@ fun KeepNotePage(navController: NavHostController) {
                     }
                 }
             }
+        } // LazyColumn Sonu
 
-
-        } // End of LazyColumn
-
-        // Dialogs remain outside the main scrollable content
+        // Dialogs (Dialoglar - Kaydırılabilir alanın dışında kalır)
         if (showClearConfirmationDialog) {
             AlertDialog(
                 onDismissRequest = { showClearConfirmationDialog = false },
                 title = { Text("Clear All Records", color = primaryColor, fontStyle = FontStyle.Italic) },
                 text = { Text("Are you sure you want to clear all calorie records?") },
                 confirmButton = {
-                    TextButton(onClick = { calorieRecords.clear(); showClearConfirmationDialog = false }) {
+                    TextButton(onClick = {
+                        calorieRecords.clear()
+                        saveCalorieRecords(context, calorieRecords.toList()) // TEMİZLEDİKTEN SONRA KAYDET
+                        showClearConfirmationDialog = false
+                    }) {
                         Text("Yes", color = primaryColor, fontStyle = FontStyle.Italic)
                     }
                 },
@@ -890,7 +843,12 @@ fun KeepNotePage(navController: NavHostController) {
                 title = { Text("Delete Record", color = primaryColor, fontStyle = FontStyle.Italic) },
                 text = { Text("Are you sure you want to delete this record?") },
                 confirmButton = {
-                    TextButton(onClick = { calorieRecords.remove(selectedRecordToDelete!!); showDeleteConfirmationDialog = false; selectedRecordToDelete = null }) {
+                    TextButton(onClick = {
+                        calorieRecords.remove(selectedRecordToDelete!!)
+                        saveCalorieRecords(context, calorieRecords.toList()) // SİLDİKTEN SONRA KAYDET
+                        showDeleteConfirmationDialog = false
+                        selectedRecordToDelete = null
+                    }) {
                         Text("Yes", color = primaryColor, fontStyle = FontStyle.Italic)
                     }
                 },
@@ -901,5 +859,5 @@ fun KeepNotePage(navController: NavHostController) {
                 }
             )
         }
-    } // End of Box
+    } // Box Sonu
 }

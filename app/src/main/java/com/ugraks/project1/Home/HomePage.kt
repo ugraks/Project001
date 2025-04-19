@@ -1,8 +1,8 @@
-package com.ugraks.project1
+package com.ugraks.project1.Home
 
+import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -16,25 +16,18 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -49,7 +42,6 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
@@ -62,7 +54,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
@@ -73,7 +64,7 @@ import androidx.core.content.ContextCompat
 import androidx.navigation.NavHostController
 import com.ugraks.project1.AppNavigation.Screens
 import com.ugraks.project1.AppNavigation.Screens.DailyCaloriesPage
-import com.ugraks.project1.AppNavigation.Screens.ScreenRatingPage
+import com.ugraks.project1.R
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -126,11 +117,11 @@ fun HomePage(navController: NavHostController) {
 
 
                     NavigationDrawerItem(
-                        label = { Text("Rate Our Application") },
+                        label = { Text("Add something here!!") },
                         selected = false,
                         icon = { Icon(Icons.Filled.Star, contentDescription = null) },
                         onClick = {
-                            navController.navigate(ScreenRatingPage)
+
                         }
                     )
 
@@ -289,14 +280,14 @@ fun HomePage(navController: NavHostController) {
 
                                 if (ContextCompat.checkSelfPermission(
                                         context,
-                                        android.Manifest.permission.ACTIVITY_RECOGNITION
+                                        Manifest.permission.ACTIVITY_RECOGNITION
                                     ) == PackageManager.PERMISSION_GRANTED
                                 ) {
 
                                     navController.navigate(Screens.PedoMeterScreen)
                                 } else {
 
-                                    requestPermissionLauncher.launch(android.Manifest.permission.ACTIVITY_RECOGNITION)
+                                    requestPermissionLauncher.launch(Manifest.permission.ACTIVITY_RECOGNITION)
                                 }
                             } else {
 

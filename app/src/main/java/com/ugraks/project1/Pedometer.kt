@@ -195,7 +195,7 @@ fun StepCounterPage(navController: NavHostController) {
                 }
 
                 Text(
-                    text = "Step Counter",
+                    text = "Pedometer",
                     style = MaterialTheme.typography.headlineMedium,
                     color = onBackgroundColor, // Gradyan üzerinde iyi durması için onBackground
                     fontWeight = FontWeight.Bold,

@@ -177,7 +177,7 @@ fun RecipeDetailScreen(recipeName: String, navController: NavController) {
 
                 // Resim - Burada varsayılan bir resim ekliyoruz
                 Image(
-                    painter = painterResource(id = R.drawable.ic_launcher_foreground), // Varsayılan resim
+                    painter = painterResource(id = R.drawable.spagetti_carbonara), // Varsayılan resim
                     contentDescription = "Recipe Image",
                     modifier = Modifier
                         .size(120.dp) // Card'ın yüksekliğinin yaklaşık 2/5'i

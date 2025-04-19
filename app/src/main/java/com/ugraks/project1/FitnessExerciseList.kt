@@ -120,22 +120,34 @@ fun ExerciseListScreen(
                                     fontSize = 20.sp,
                                     color = MaterialTheme.colorScheme.primary
                                 ),
-                                modifier = Modifier.padding(bottom = 8.dp).align(Alignment.CenterHorizontally)
+                                modifier = Modifier
+                                    .padding(bottom = 8.dp)
+                                    .align(Alignment.CenterHorizontally)
                             )
 
-                            // Resim
-                            val imageResId = getExerciseImageResource(exercise.name)
+                            // Resim veya İkon - BURASI DEĞİŞTİRİLDİ
+                            // expandedExercise.value == exercise ise gerçek resmi göster, aksi halde varsayılan ikonu göster
+                            val currentImageResource = if (expandedExercise.value == exercise) {
+                                // Kart açıksa, egzersize özel resmi al
+                                getExerciseImageResource(exercise.name)
+                            } else {
+                                // Kart kapalıysa, varsayılan fitness ikonunu göster
+                                R.drawable.baseline_fitness_center_24 // Sizin varsayılan ikonunuz
+                            }
+
                             Image(
-                                painter = painterResource(id = imageResId),
-                                contentDescription = exercise.name,
+                                painter = painterResource(id = currentImageResource),
+                                contentDescription = if (expandedExercise.value == exercise) exercise.name else "Fitness Icon",
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(200.dp) // Resmin boyutunu ayarlayabilirsiniz
-                                    .padding(bottom = 12.dp) // Resim ile metin arasındaki boşluk arttırıldı
-                                    .clip(RoundedCornerShape(16.dp)) // Resmin köşeleri yuvarlatıldı
+                                    .height(200.dp) // Orijinal resim yüksekliğini kullan
+                                    .padding(bottom = 12.dp)
+                                    .clip(RoundedCornerShape(16.dp)),
+                                // contentScale = ContentScale.Crop // İhtiyaca göre scale type eklenebilir
                             )
 
-                            // Egzersiz Açıklamaları ve Adımlar
+
+                            // Egzersiz Açıklamaları ve Adımlar (Burada bir değişiklik yapılmadı)
                             AnimatedVisibility(visible = expandedExercise.value == exercise) {
                                 Column {
                                     Text(
@@ -179,13 +191,13 @@ fun ExerciseListScreen(
     }
 }
 
-// Resmi dosya adından almak için yardımcı fonksiyon
+// Resmi dosya adından almak için yardımcı fonksiyon (Burada bir değişiklik yapılmadı)
 fun getExerciseImageResource(exerciseName: String): Int {
     return when (exerciseName) {
-        //"Push-up" -> R.drawable.push_up
-        //"Incline Bench Press" -> R.drawable.bench_press
-        //"Deadlift" -> R.drawable.deadlift
+        "Push-up" -> R.drawable.push_up
+        "Incline Bench Press" -> R.drawable.bench_press
+        "Deadlift" -> R.drawable.deadlift
         // Diğer egzersizler için benzer şekilde ekleyin
-        else -> R.drawable.baseline_fitness_center_24 // Varsayılan bir resim
+        else -> R.drawable.baseline_fitness_center_24 // Varsayılan bir resim (eğer egzersiz resim fonksiyonu uygun resim bulamazsa kullanılacak)
     }
 }

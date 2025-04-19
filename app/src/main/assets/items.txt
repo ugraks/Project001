@@ -1,30 +1,30 @@
-item:Apple,calories:520,type:Food
-item:Coke,calories:420,type:Drink
-item:Chicken,calories:2390,type:Food
-item:Orange Juice,calories:450,type:Drink
-item:Bread,calories:2650,type:Food
-item:Ayran,calories:330,type:Drink
-item:Pasta,calories:3710,type:Food
-item:Milk,calories:640,type:Drink
-item:Beef,calories:2500,type:Food
-item:Water,calories:0,type:Drink
-item:Cheese,calories:4020,type:Food
-item:Beer,calories:430,type:Drink
-item:Rice,calories:3600,type:Food
-item:Tea With Sugar,calories:150,type:Drink
-item:Egg,calories:1550,type:Food
-item:Coffee Latte,calories:600,type:Drink
-item:Potato,calories:770,type:Food
-item:Energy Drink,calories:450,type:Drink
-item:Fish,calories:2000,type:Food
-item:Smoothie,calories:700,type:Drink
-item:Nuts,calories:6000,type:Food
-item:Chocolate Milk,calories:800,type:Drink
-item:Banana,calories:890,type:Food
-item:Iced Tea,calories:200,type:Drink
-item:Pizza,calories:2660,type:Food
-item:Soy Milk,calories:450,type:Drink
-item:Lentils,calories:3500,type:Food
-item:Tomato Juice,calories:170,type:Drink
-item:Avocado,calories:1600,type:Food
-item:Coconut Water,calories:190,type:Drink
+item:Apple,calories:520,type:Food,protein_g:3,fat_g:2,carb_g:138
+item:Coke,calories:420,type:Drink,protein_g:0,fat_g:0,carb_g:106
+item:Chicken,calories:2390,type:Food,protein_g:240,fat_g:140,carb_g:0
+item:Orange Juice,calories:450,type:Drink,protein_g:7,fat_g:1,carb_g:104
+item:Bread,calories:2650,type:Food,protein_g:90,fat_g:32,carb_g:490
+item:Ayran,calories:330,type:Drink,protein_g:28,fat_g:20,carb_g:35
+item:Pasta,calories:3710,type:Food,protein_g:130,fat_g:15,carb_g:740
+item:Milk,calories:640,type:Drink,protein_g:33,fat_g:35,carb_g:47
+item:Beef,calories:2500,type:Food,protein_g:200,fat_g:150,carb_g:0
+item:Water,calories:0,type:Drink,protein_g:0,fat_g:0,carb_g:0
+item:Cheese,calories:4020,type:Food,protein_g:250,fat_g:330,carb_g:13
+item:Beer,calories:430,type:Drink,protein_g:5,fat_g:0,carb_g:40
+item:Rice,calories:3600,type:Food,protein_g:70,fat_g:7,carb_g:790
+item:Tea With Sugar,calories:150,type:Drink,protein_g:0,fat_g:0,carb_g:40
+item:Egg,calories:1550,type:Food,protein_g:120,fat_g:100,carb_g:12
+item:Coffee Latte,calories:600,type:Drink,protein_g:30,fat_g:25,carb_g:50
+item:Potato,calories:770,type:Food,protein_g:20,fat_g:1,carb_g:170
+item:Energy Drink,calories:450,type:Drink,protein_g:0,fat_g:0,carb_g:113
+item:Fish,calories:2000,type:Food,protein_g:240,fat_g:140,carb_g:0
+item:Smoothie,calories:700,type:Drink,protein_g:50,fat_g:10,carb_g:100
+item:Nuts,calories:6000,type:Food,protein_g:200,fat_g:500,carb_g:200
+item:Chocolate Milk,calories:800,type:Drink,protein_g:34,fat_g:35,carb_g:100
+item:Banana,calories:890,type:Food,protein_g:11,fat_g:3,carb_g:230
+item:Iced Tea,calories:200,type:Drink,protein_g:0,fat_g:0,carb_g:50
+item:Pizza,calories:2660,type:Food,protein_g:100,fat_g:100,carb_g:300
+item:Soy Milk,calories:450,type:Drink,protein_g:33,fat_g:18,carb_g:28
+item:Lentils,calories:3500,type:Food,protein_g:240,fat_g:10,carb_g:630
+item:Tomato Juice,calories:170,type:Drink,protein_g:9,fat_g:1,carb_g:35
+item:Avocado,calories:1600,type:Food,protein_g:20,fat_g:150,carb_g:90
+item:Coconut Water,calories:190,type:Drink,protein_g:7,fat_g:2,carb_g:37

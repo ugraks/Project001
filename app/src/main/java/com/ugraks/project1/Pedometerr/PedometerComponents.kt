@@ -69,7 +69,7 @@ fun saveDailyStepCount(
 }
 
 // deleteEntry, belirli bir tarihteki satırdan belirli bir detay stringini kaldıracak şekilde değiştirildi
-fun deleteEntry(context: Context, date: String, entryDetailString: String) {
+fun deleteEntry(context: Context, date: String, indexToDelete: Int) { // <-- Parametreler değişti
     val file = File(context.filesDir, "daily_steps.txt")
     if (!file.exists()) {
         Log.w("DeleteEntry", "File not found for deletion.")
@@ -84,6 +84,7 @@ fun deleteEntry(context: Context, date: String, entryDetailString: String) {
     }
 
     var lineModifiedOrRemoved = false
+    // mapNotNull kullanarak güncellenmiş satır listesini oluştur
     val updatedLines = lines.mapNotNull { line ->
         if (line.startsWith("$date:")) {
             val dateAndData = line.split(":", limit = 2)
@@ -92,26 +93,29 @@ fun deleteEntry(context: Context, date: String, entryDetailString: String) {
                 val dataPart = dateAndData[1]
 
                 val entriesForDay = dataPart.split(ENTRY_DELIMITER).toMutableList()
-                val originalSize = entriesForDay.size
-                // Belirli detay stringini kaldır (trimleyerek boşluk farklarını göz ardı et)
-                entriesForDay.removeIf { it.trim() == entryDetailString.trim() }
 
+                // İndex kontrolü yap ve eğer geçerliyse o indeksteki öğeyi kaldır - BURADA DEĞİŞTİ
+                if (indexToDelete >= 0 && indexToDelete < entriesForDay.size) {
+                    val removedEntry = entriesForDay.removeAt(indexToDelete) // <-- İndekse göre kaldır
+                    lineModifiedOrRemoved = true // Bir öğe kaldırıldı
+                    Log.d("DeleteEntry", "Removed entry from file at index $indexToDelete for date $date. Content: ${removedEntry.trim()}")
 
-                if (entriesForDay.size < originalSize) {
-                    lineModifiedOrRemoved = true
-                }
-
-                if (entriesForDay.isNotEmpty()) {
-                    // Kalan girişleri birleştir ve satırı tut
-                    "$datePart:${entriesForDay.joinToString(ENTRY_DELIMITER)}"
+                    if (entriesForDay.isNotEmpty()) {
+                        // Kalan girişleri birleştir ve satırı tut
+                        "$datePart:${entriesForDay.joinToString(ENTRY_DELIMITER)}"
+                    } else {
+                        // Bu tarih için hiç giriş kalmadıysa, tüm satırı kaldır
+                        null // mapNotNull için null döndürmek öğeyi kaldırır
+                    }
                 } else {
-                    // Bu tarih için hiç giriş kalmadı, tüm satırı kaldır
-                    null // mapNotNull için null döndürmek öğeyi kaldırır
+                    // Geçersiz index, bu satırı değiştirmeden tut - Log eklendi/güncellendi
+                    Log.w("DeleteEntry", "Attempted to delete entry with invalid index $indexToDelete for date $date. Line not modified.")
+                    line // Satırı değiştirmeden bırak
                 }
             } else {
                 // Hedef tarih için hatalı biçimlendirilmiş satır, sakla ama uyarı logu ver
                 Log.w("DeleteEntry", "Malformed line found for date $date during deletion attempt: $line")
-                line
+                line // Hatalı satırı değiştirmeden bırak
             }
         } else {
             // Hedef tarih satırı değil, sakla
@@ -119,15 +123,19 @@ fun deleteEntry(context: Context, date: String, entryDetailString: String) {
         }
     }
 
+    // Eğer herhangi bir değişiklik yapıldıysa dosyayı yeniden yaz
     if (lineModifiedOrRemoved) {
         try {
+            // Güncellenmiş satırları dosyaya geri yaz
             file.writeText(updatedLines.joinToString("\n"))
-            Log.d("DeleteEntry", "Entry detail deleted and file updated for date: $date")
+            Log.d("DeleteEntry", "File updated after deletion for date: $date")
         } catch (e: IOException) {
             Log.e("DeleteEntry", "Error rewriting file after deletion: ${e.message}")
+            // Dosya yazma hatası durumunda ne yapılacağı düşünülmeli (örn. kullanıcıya bilgi verme)
         }
     } else {
-        Log.w("DeleteEntry", "Specific entry detail not found for deletion on date $date or file not modified.")
+        // lineModifiedOrRemoved false ise dosya değişmedi demektir.
+        Log.w("DeleteEntry", "No entry deleted for date $date, index $indexToDelete. Index might have been invalid or line not found or malformed.")
     }
 }
 

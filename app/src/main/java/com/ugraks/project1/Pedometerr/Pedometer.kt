@@ -4,6 +4,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.VibrationEffect
 import android.os.Vibrator
+import android.widget.Toast
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -390,41 +391,51 @@ fun StepCounterPage(navController: NavHostController) {
 
                 Button(
                     onClick = {
-                        val serviceIntent = Intent(context, StepCounterService::class.java)
-                        serviceIntent.action = StepCounterService.ACTION_RESET
-                        val target = targetStepCount.toIntOrNull()
-                        val stepCountSave = stepCount // Adım sayısını al
-                        saveDailyStepCount(
-                            context = context,
-                            stepCount = stepCountSave,
-                            targetStep = target,
-                            goalReached = goalReached
-                        )  // Günlük adım sayısını kaydet
-                        context.startService(serviceIntent)
-                        stepCount = 0
-                        isStarted = false
-                        goalReached = false
-                        targetStepCount = ""
-                        targetStepCountInput = ""
-                        isSettingGoal = true
-                        sharedPreferences.edit().remove("target_step_count").apply()
-                        vibrator.vibrate(
-                            VibrationEffect.createOneShot(
-                                200,
-                                VibrationEffect.DEFAULT_AMPLITUDE
+                        // *** BURASI DEĞİŞTİ - Adım sayısı 0 ise kontrolü eklendi ***
+                         if (stepCount == 0) {
+                            // Adım sayısı 0 ise Toast mesajı göster
+                            Toast.makeText(context, "No steps to save or reset.", Toast.LENGTH_SHORT).show()
+                        } else {
+                            // Adım sayısı 0'dan büyükse mevcut işlemi yap
+                            val serviceIntent = Intent(context, StepCounterService::class.java)
+                            serviceIntent.action = StepCounterService.ACTION_RESET
+                            val target = targetStepCount.toIntOrNull()
+                            val stepCountSave = stepCount // Adım sayısını al
+                            saveDailyStepCount(
+                                context = context,
+                                stepCount = stepCountSave,
+                                targetStep = target,
+                                goalReached = goalReached
+                            )  // Günlük adım sayısını kaydet
+                            context.startService(serviceIntent)
+                            stepCount = 0
+                            isStarted = false
+                            goalReached = false
+                            targetStepCount = ""
+                            targetStepCountInput = ""
+                            isSettingGoal = true
+                            sharedPreferences.edit().remove("target_step_count").apply()
+                            vibrator.vibrate(
+                                VibrationEffect.createOneShot(
+                                    200,
+                                    VibrationEffect.DEFAULT_AMPLITUDE
+                                )
                             )
-                        )
+                        }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = colorScheme.surfaceVariant), // Farklı renk tonu
-                    shape = RoundedCornerShape(12.dp), // Yuvarlak köşeler
-                    modifier = Modifier.fillMaxWidth().height(56.dp) // Genişlik ve yükseklik ayarı
+                    // ... geri kalan buton özellikleri aynı kalıyor
+                    colors = ButtonDefaults.buttonColors(containerColor = colorScheme.surfaceVariant),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
                 ) {
                     Text(
                         "Reset and Save",
                         color = onBackgroundColor,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
-                    ) // Yazı rengi ve stili
+                    )
                 }
                 Button(
                     onClick = {

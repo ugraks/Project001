@@ -42,7 +42,7 @@ fun DailySummaryPage(navController: NavController) {
     val dailySummaries = remember { mutableStateMapOf<String, MutableList<DailyStepEntryDetail>>() }
     var showDeleteAllDialog by remember { mutableStateOf(false) }
     // Silinecek öğe için Pair<TarihStringi, OriginalDetailString> saklayalım
-    var entryToDelete by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var entryToDelete by remember { mutableStateOf<Pair<String, Pair<Int, String>>?>(null) }
 
 
     // Verileri yükleme ve gruplandırma
@@ -159,6 +159,7 @@ fun DailySummaryPage(navController: NavController) {
         }
 
         // Liste Alanı - LazyColumn
+        // Liste Alanı - LazyColumn
         LazyColumn(
             modifier = Modifier
                 .weight(1f)
@@ -190,8 +191,8 @@ fun DailySummaryPage(navController: NavController) {
 
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        // O güne ait her bir kaydı listele
-                        entriesForDay.forEachIndexed { index, entryDetail ->
+                        // O güne ait her bir kaydı listele - BURADA DEĞİŞTİ (forEachIndexed)
+                        entriesForDay.forEachIndexed { index, entryDetail -> // <-- index alındı
                             // İlk kayıt hariç diğerlerinden önce ayırıcı ekle
                             if (index > 0) {
                                 Divider(
@@ -237,11 +238,12 @@ fun DailySummaryPage(navController: NavController) {
                                     )
                                 }
 
-                                // Silme ikonu - Her kaydın yanında olacak
+                                // Silme ikonu - Tıklanınca index ve string kaydediliyor - BURADA DEĞİŞTİ
                                 IconButton(
                                     onClick = {
-                                        // Silinecek öğe için tarihi ve orijinal detay stringini sakla
-                                        entryToDelete = Pair(date, entryDetail.originalDetailString)
+                                        // Silinecek öğe için tarihi, indeksi ve orijinal detay stringini sakla
+                                        entryToDelete = Pair(date, Pair(index, entryDetail.originalDetailString)) // <-- index de eklendi
+                                        Log.d("DailySummaryPage", "Prepare to delete entry at index $index for date $date with content: ${entryDetail.originalDetailString}")
                                     }
                                 ) {
                                     androidx.compose.material.Icon(
@@ -303,6 +305,7 @@ fun DailySummaryPage(navController: NavController) {
 
 
         // Bireysel silme dialog
+        // Bireysel silme dialog - BURADA DEĞİŞTİ
         if (entryToDelete != null) {
             AlertDialog(
                 onDismissRequest = { entryToDelete = null },
@@ -310,22 +313,35 @@ fun DailySummaryPage(navController: NavController) {
                 text = { Text("Are you sure you want to delete this specific saved entry?") },
                 confirmButton = {
                     TextButton(onClick = {
-                        val (dateKey, originalDetailString) = entryToDelete!!
-                        deleteEntry(context, dateKey, originalDetailString) // Güncellenmiş deleteEntry çağrısı
+                        val (dateKey, indexAndDetail) = entryToDelete!!
+                        val (indexToRemove, originalDetailString) = indexAndDetail // indeksi ve stringi al
 
-                        // State'ten de kaldır
-                        // İlgili günün listesini bul
+                        // Dosyadan silme fonksiyonunu indeksle çağır - BURADA DEĞİŞTİ
+                        deleteEntry(context, dateKey, indexToRemove) // <-- İndeks gönderiliyor
+
+                        // State'ten de kaldır (artık indeksi biliyoruz) - BURADA DEĞİŞTİ
                         val entriesForDay = dailySummaries[dateKey]
-                        if (entriesForDay != null) {
-                            // Orijinal stringe göre detayı listeden kaldır
-                            entriesForDay.removeIf { it.originalDetailString == originalDetailString }
-                            // Eğer bu tarih için hiç giriş kalmadıysa, tarihi map'ten kaldır
+                        if (entriesForDay != null && indexToRemove >= 0 && indexToRemove < entriesForDay.size) {
+                            // Belirtilen indeksteki öğeyi state listesinden kaldır
+                            val removedDetail = entriesForDay.removeAt(indexToRemove) // <-- İndekse göre kaldır
+                            Log.d("DailySummaryPage", "Removed item from state at index $indexToRemove for date $dateKey. Content: ${removedDetail.originalDetailString}")
+
+                            // Eğer bu tarih için State listesinde hiç giriş kalmadıysa, tarihi map'ten kaldır
                             if (entriesForDay.isEmpty()) {
                                 dailySummaries.remove(dateKey)
+                                Log.d("DailySummaryPage", "Removed date key $dateKey from state as it's now empty.")
                             }
+
+                        } else {
+                            // Bu hata durumu, eğer state ile dosya arasında ciddi bir tutarsızlık olursa oluşabilir.
+                            // Bu durumda veriyi yeniden yüklemek iyi bir çözüm olabilir
+                            Log.w("DailySummaryPage", "Attempted to remove item from state at invalid index $indexToRemove for date $dateKey. State list size: ${entriesForDay?.size}")
+                            loadDailySummaries() // State bozuksa dosyadan tekrar yükle
                         }
+
                         entryToDelete = null // Dialogu kapat
-                        Log.d("DailySummaryPage", "Confirmed deletion of entry detail: $originalDetailString for date $dateKey")
+                        Log.d("DailySummaryPage", "Confirmed deletion attempt for entry at index $indexToRemove for date $dateKey. UI state updated.")
+
                     }) {
                         Text("Yes", color = MaterialTheme.colorScheme.primary)
                     }

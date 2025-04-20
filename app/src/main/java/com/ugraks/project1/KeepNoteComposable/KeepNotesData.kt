@@ -1,6 +1,8 @@
 package com.ugraks.project1.KeepNoteComposable
 
 import android.content.Context
+import android.util.Log
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import java.io.File
 import java.io.InputStreamReader
 import java.time.LocalDate
@@ -13,6 +15,14 @@ data class FoodItemKeepNote(
     val proteinPerKgL: Double, // Grams of protein per 1000 units (kg or L)
     val fatPerKgL: Double,     // Grams of fat per 1000 units (kg or L)
     val carbPerKgL: Double     // Grams of carbs per 1000 units (kg or L)
+)
+
+data class DailySummary(
+    val date: String,
+    val calories: Int,
+    val protein: Double,
+    val fat: Double,
+    val carbs: Double
 )
 
 data class CalorieRecord(
@@ -157,25 +167,56 @@ fun loadCalorieRecords(context: Context): List<CalorieRecord> {
     return loadedRecords
 }
 
-fun saveTodaySummary(context: Context, calories: Int, protein: Double, fat: Double, carbs: Double): Boolean {
+fun saveTodaySummary(context: Context, calories: Int, protein: Double, fat: Double, carbs: Double): SaveSummaryResult {
     val date = LocalDate.now().toString()  // Bugünün tarihi
-    val existingSummaries = readDailySummaries(context).toMutableList()  // Dosyadaki mevcut özetleri oku
+    val file = File(context.filesDir, "daily_summaries.txt")
 
-    // Eğer aynı tarihte bir özet varsa, ekleme yapma ve sadece "DailyScreen" sayfasına git
-    if (existingSummaries.any { it.date == date }) {
-        return false  // Aynı gün kaydedilemez, fakat ekrana yönlendirilebilir
+    val existingSummaries = try {
+        readDailySummaries(context).toMutableList()  // Dosyadaki mevcut özetleri oku
+    } catch (e: Exception) {
+        Log.e("KeepNoteComposable", "Error reading daily summaries for save/update: ${e.message}")
+        return SaveSummaryResult.ERROR // Okuma hatası
     }
 
-    // Yeni özet oluştur
-    val newSummary = DailySummary(date, calories, protein, fat, carbs)
+    val existingSummaryIndex = existingSummaries.indexOfFirst { it.date == date }
 
-    // Yeni özet listeye ekle
-    existingSummaries.add(newSummary)
+    if (existingSummaryIndex == -1) {
+        // Eğer aynı tarihte bir özet YOKSA, yeni özet oluştur ve ekle
+        val newSummary = DailySummary(date, calories, protein, fat, carbs)
+        existingSummaries.add(newSummary)
 
-    // Dosyaya kaydet
-    saveSummariesToFile(context, existingSummaries)
+        // Dosyaya kaydet
+        try {
+            saveSummariesToFile(context, existingSummaries)
+            Log.d("KeepNoteComposable", "Newly saved daily summary for $date. Data: C$calories P${protein.roundToInt()} F${fat.roundToInt()} C${carbs.roundToInt()}")
+            return SaveSummaryResult.NEWLY_SAVED // Başarılı şekilde kaydedildi
+        } catch (e: Exception) {
+            Log.e("KeepNoteComposable", "Error saving new daily summary for $date: ${e.message}")
+            return SaveSummaryResult.ERROR // Kaydetme hatası
+        }
 
-    return true  // Başarılı şekilde kaydedildi
+    } else {
+        // Eğer aynı tarihte bir özet VARSA, mevcut özeti GÜNCELLE
+        val existingSummary = existingSummaries[existingSummaryIndex]
+        // Mevcut özeti kopyala ve değerleri güncelle
+        val updatedSummary = existingSummary.copy(
+            calories = calories,
+            protein = protein,
+            fat = fat,
+            carbs = carbs
+        )
+        existingSummaries[existingSummaryIndex] = updatedSummary // Listede güncelle
+
+        // Dosyaya kaydet (tüm listeyi yeniden yaz)
+        try {
+            saveSummariesToFile(context, existingSummaries)
+            Log.d("KeepNoteComposable", "Updated daily summary for $date. New Data: C$calories P${protein.roundToInt()} F${fat.roundToInt()} C${carbs.roundToInt()}")
+            return SaveSummaryResult.UPDATED // Başarılı şekilde güncellendi
+        } catch (e: Exception) {
+            Log.e("KeepNoteComposable", "Error saving updated daily summary for $date: ${e.message}")
+            return SaveSummaryResult.ERROR // Kaydetme hatası
+        }
+    }
 }
 
 fun readDailySummaries(context: Context): List<DailySummary> {
@@ -200,10 +241,35 @@ fun readDailySummaries(context: Context): List<DailySummary> {
     return summaries
 }
 
-data class DailySummary(
-    val date: String,
-    val calories: Int,
-    val protein: Double,
-    val fat: Double,
-    val carbs: Double
-)
+enum class SaveSummaryResult {
+    NEWLY_SAVED, // Yeni özet kaydedildi
+    UPDATED,     // Mevcut özet güncellendi
+    NO_ACTION,   // Herhangi bir işlem yapılmadı (örn: iptal edildi, veri yok) - Bu senaryo bu fonksiyonda pek olmayacak
+    ERROR        // Hata oluştu
+}
+
+fun deleteSummary(context: Context, summary: DailySummary, summaries: SnapshotStateList<DailySummary>) {
+    summaries.remove(summary)
+    saveSummariesToFile(context, summaries)
+}
+
+fun clearAllSummaries(context: Context) {
+    File(context.filesDir, "daily_summaries.txt").delete()
+}
+
+fun saveSummariesToFile(context: Context, summaries: List<DailySummary>) {
+    val content = summaries.joinToString("\n---\n") {
+        """
+        Date: ${it.date}
+        Calories: ${it.calories} kcal
+        Protein: ${it.protein.roundToInt()} g
+        Fat: ${it.fat.roundToInt()} g
+        Carbs: ${it.carbs.roundToInt()} g
+        """.trimIndent()
+    }
+
+    context.openFileOutput("daily_summaries.txt", Context.MODE_PRIVATE).use {
+        it.write(content.toByteArray())
+    }
+}
+

@@ -35,6 +35,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import java.io.File
 import java.text.SimpleDateFormat
@@ -116,7 +117,7 @@ fun DailySummariesPage(context: Context, navController: NavController) {
                             horizontalAlignment = Alignment.Start,
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            Text("Date: ${summary.date}", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                            Text("${summary.date}", fontWeight = FontWeight.Bold, fontSize = 20.sp, style = MaterialTheme.typography.bodyMedium)
                             Text("Calories: ${summary.calories} kcal", style = MaterialTheme.typography.bodyMedium)
                             Text("Protein: ${summary.protein.roundToInt()} g", style = MaterialTheme.typography.bodyMedium)
                             Text("Fat: ${summary.fat.roundToInt()} g", style = MaterialTheme.typography.bodyMedium)
@@ -190,29 +191,6 @@ fun DailySummariesPage(context: Context, navController: NavController) {
     }
 }
 
-fun deleteSummary(context: Context, summary: DailySummary, summaries: SnapshotStateList<DailySummary>) {
-    summaries.remove(summary)
-    saveSummariesToFile(context, summaries)
-}
 
-fun clearAllSummaries(context: Context) {
-    File(context.filesDir, "daily_summaries.txt").delete()
-}
-
-fun saveSummariesToFile(context: Context, summaries: List<DailySummary>) {
-    val content = summaries.joinToString("\n---\n") {
-        """
-        Date: ${it.date}
-        Calories: ${it.calories} kcal
-        Protein: ${it.protein.roundToInt()} g
-        Fat: ${it.fat.roundToInt()} g
-        Carbs: ${it.carbs.roundToInt()} g
-        """.trimIndent()
-    }
-
-    context.openFileOutput("daily_summaries.txt", Context.MODE_PRIVATE).use {
-        it.write(content.toByteArray())
-    }
-}
 
 

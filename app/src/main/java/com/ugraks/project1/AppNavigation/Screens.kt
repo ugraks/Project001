@@ -55,6 +55,11 @@ sealed class Screens(val route : String) {
     object PedometerDailySummary : Screens("PedometerDailySummary")
 
 
+    @Serializable
+    object BoxingMainScreen : Screens("boxingMainScreen")
+    @Serializable
+    object BoxingDetailListScreen : Screens("boxingDetailListScreen/{selectedCategories}") {
+        fun createRoute(selectedCategories: String) = "boxingDetailListScreen/$selectedCategories"}
 
 
 

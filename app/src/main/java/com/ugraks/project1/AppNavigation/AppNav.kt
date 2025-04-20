@@ -13,6 +13,9 @@ import com.ugraks.project1.AppNavigation.Screens.KeepNotePage
 import com.ugraks.project1.AppNavigation.Screens.PedoMeterScreen
 import com.ugraks.project1.AppNavigation.Screens.RecipeList
 import com.ugraks.project1.AppNavigation.Screens.ScreenHomePage
+import com.ugraks.project1.Boxing.BoxingDetailListScreen
+import com.ugraks.project1.Boxing.BoxingMainScreen
+import com.ugraks.project1.Boxing.loadBoxingDataFromAssets
 import com.ugraks.project1.DailyCalorie.DailyCalories
 import com.ugraks.project1.Fitness.ExerciseListScreen
 import com.ugraks.project1.Foods.FoodCaloriesScreen
@@ -109,6 +112,29 @@ fun SayfaGecisleri() {
         composable<Screens.PedometerDailySummary> {
             DailySummaryPage(navController)
 
+        }
+
+        composable(Screens.BoxingMainScreen.route) {
+            BoxingMainScreen(navController = navController, context = context) // Boks ana ekranı
+        }
+
+        composable(
+            route = Screens.BoxingDetailListScreen.route, // Rota tanımı
+            arguments = listOf(navArgument("selectedCategories") { type = NavType.StringType }) // Argüman tanımı
+        ) { backStackEntry ->
+            // Argümanı al ve listeye dönüştür
+            val selectedCategoriesString = backStackEntry.arguments?.getString("selectedCategories") ?: ""
+            val selectedCategoriesList = selectedCategoriesString.split(",").filter { it.isNotBlank() }
+
+            // Boks verisini burada yükle (Mevcut ExerciseListScreen örneği gibi)
+            val allBoxingItems = loadBoxingDataFromAssets(context)
+
+            // Boks detay listesi ekranını çağır
+            BoxingDetailListScreen(
+                navController = navController,
+                selectedCategories = selectedCategoriesList,
+                allBoxingItems = allBoxingItems // Yüklenen veriyi ekrana ilet
+            )
         }
 
 

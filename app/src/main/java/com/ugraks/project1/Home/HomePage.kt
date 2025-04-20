@@ -251,13 +251,29 @@ fun HomePage(navController: NavHostController) {
                 }
             },
 
+
             floatingActionButton = {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(16.dp) // Genel padding
                 ) {
-                    // 1. FAB
+                    // 1.FAB
+                    FloatingActionButton(
+                        onClick = {
+                            navController.navigate(Screens.BoxingMainScreen.route)
+                        },
+                        containerColor = MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd) // Sağ altta hizalama
+                            .padding(bottom = 144.dp) // Üst üste gelmesi için padding
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.baseline_sports_martial_arts_24),
+                            contentDescription = "Boxing"
+                        )
+                    }
+                    // 2. FAB
                     FloatingActionButton(
                         onClick = {
                             navController.navigate(Screens.MainScreen.route)
@@ -273,7 +289,7 @@ fun HomePage(navController: NavHostController) {
                         )
                     }
 
-                    // 2. FAB
+                    // 3. FAB
                     FloatingActionButton(
                         onClick = {
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {

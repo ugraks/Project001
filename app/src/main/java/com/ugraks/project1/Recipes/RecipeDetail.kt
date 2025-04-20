@@ -59,12 +59,9 @@ fun RecipeDetailScreen(recipeName: String, navController: NavController) {
     val titleFontFamily = FontFamily.Serif
     val contentFontFamily = FontFamily.SansSerif
 
-    // --- GÖRSEL SEÇİMİ İÇİN YAPILAN DEĞİŞİKLİK BURADA ---
-    // Gösterilecek görselin resource ID'sini doğrudan gelen recipeName'e göre,
-    // getRecipeImageResource fonksiyonunu kullanarak belirliyoruz.
+
     val imageResource = getRecipeImageResource(recipeName = recipeName)
-    // Artık recipe nesnesinin içinde saklanan bir görsel ID'sine ihtiyacımız yok.
-    // --- DEĞİŞİKLİK SONU ---
+
 
     Box(
         modifier = Modifier

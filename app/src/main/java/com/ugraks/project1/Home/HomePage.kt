@@ -288,6 +288,7 @@ fun HomePage(navController: NavHostController) {
                                 } else {
 
                                     requestPermissionLauncher.launch(Manifest.permission.ACTIVITY_RECOGNITION)
+
                                 }
                             } else {
 

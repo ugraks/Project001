@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -82,7 +83,7 @@ fun RecipeListScreen(navController: NavController) {
 
         // Başlık
         Text(
-            text = "Search Recipes...",
+            text = "Search Recipes",
             fontSize = 28.sp,
             color = colorScheme.primary,
             fontWeight = FontWeight.Bold,
@@ -136,7 +137,8 @@ fun RecipeListScreen(navController: NavController) {
                             text = recipe.name,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Medium,
-                            color = colorScheme.onSurface
+                            color = colorScheme.onSurface,
+                            textAlign = TextAlign.Center
 
                         )
 

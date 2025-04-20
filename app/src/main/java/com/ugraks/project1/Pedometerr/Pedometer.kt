@@ -39,6 +39,8 @@ import com.ugraks.project1.Pedometerr.saveDailyStepCount
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StepCounterPage(navController: NavHostController) {
+
+
     val context = LocalContext.current
     val density = LocalDensity.current // Mevcut ekran yoğunluğunu al
     val scrollState = rememberScrollState()

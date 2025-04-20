@@ -28,12 +28,13 @@ import com.ugraks.project1.Recipes.RecipeListScreen
 import com.ugraks.project1.Fitness.loadExercisesFromAssets
 import com.ugraks.project1.KeepNoteComposable.DailySummariesPage
 import com.ugraks.project1.Pedometerr.DailySummaryPage
+import androidx.navigation.NavHostController
 
 
 
 @Composable
-fun SayfaGecisleri() {
-    val navController = rememberNavController()
+fun SayfaGecisleri(navController: NavHostController) {
+
     val context = LocalContext.current
 
     NavHost(navController = navController, startDestination = ScreenHomePage) {

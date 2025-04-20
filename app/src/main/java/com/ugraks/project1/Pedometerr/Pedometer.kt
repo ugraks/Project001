@@ -10,8 +10,10 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Star
@@ -30,13 +32,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import androidx.navigation.NavHostController
+import com.ugraks.project1.AppNavigation.Screens
 import com.ugraks.project1.Pedometerr.StepCounterService // StepCounterService ve diğer ilgili sınıfların projenizde tanımlı olduğunu varsayıyorum.
+import com.ugraks.project1.Pedometerr.saveDailyStepCount
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StepCounterPage(navController: NavHostController) {
     val context = LocalContext.current
     val density = LocalDensity.current // Mevcut ekran yoğunluğunu al
+    val scrollState = rememberScrollState()
     val vibrator = remember {
         context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
     }
@@ -165,6 +170,7 @@ fun StepCounterPage(navController: NavHostController) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .verticalScroll(scrollState)
                 .padding(horizontal = 24.dp)
                 .statusBarsPadding()
                 .navigationBarsPadding(),
@@ -384,6 +390,14 @@ fun StepCounterPage(navController: NavHostController) {
                     onClick = {
                         val serviceIntent = Intent(context, StepCounterService::class.java)
                         serviceIntent.action = StepCounterService.ACTION_RESET
+                        val target = targetStepCount.toIntOrNull()
+                        val stepCountSave = stepCount // Adım sayısını al
+                        saveDailyStepCount(
+                            context = context,
+                            stepCount = stepCountSave,
+                            targetStep = target,
+                            goalReached = goalReached
+                        )  // Günlük adım sayısını kaydet
                         context.startService(serviceIntent)
                         stepCount = 0
                         isStarted = false
@@ -404,7 +418,22 @@ fun StepCounterPage(navController: NavHostController) {
                     modifier = Modifier.fillMaxWidth().height(56.dp) // Genişlik ve yükseklik ayarı
                 ) {
                     Text(
-                        "Reset",
+                        "Reset and Save",
+                        color = onBackgroundColor,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    ) // Yazı rengi ve stili
+                }
+                Button(
+                    onClick = {
+                        navController.navigate(Screens.PedometerDailySummary)
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = colorScheme.surfaceVariant), // Farklı renk tonu
+                    shape = RoundedCornerShape(12.dp), // Yuvarlak köşeler
+                    modifier = Modifier.fillMaxWidth().height(56.dp) // Genişlik ve yükseklik ayarı
+                ) {
+                    Text(
+                        "Show Daily Summary",
                         color = onBackgroundColor,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold

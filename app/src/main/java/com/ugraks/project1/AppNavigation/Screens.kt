@@ -48,6 +48,12 @@ sealed class Screens(val route : String) {
     @Serializable
     object PedoMeterScreen : Screens("pedoMeterScreen")
 
+    @Serializable
+    object DailySummaryScreen : Screens("DailySummaryScreen")
+
+    @Serializable
+    object PedometerDailySummary : Screens("PedometerDailySummary")
+
 
 
 

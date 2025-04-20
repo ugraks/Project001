@@ -3,6 +3,7 @@
 package com.ugraks.project1 // Paket adınızı kontrol edin
 
 import android.content.Context
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -31,11 +32,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import com.ugraks.project1.AppNavigation.Screens
 import com.ugraks.project1.KeepNoteComposable.CalorieRecord
 import com.ugraks.project1.KeepNoteComposable.FoodItemKeepNote
 import com.ugraks.project1.KeepNoteComposable.loadCalorieRecords
 import com.ugraks.project1.KeepNoteComposable.readFoodItemsFromAssets
 import com.ugraks.project1.KeepNoteComposable.saveCalorieRecords
+import com.ugraks.project1.KeepNoteComposable.saveTodaySummary
 import java.io.File
 import java.io.InputStreamReader
 import java.util.Locale
@@ -55,6 +58,7 @@ fun KeepNotePage(navController: NavHostController) {
     // Search and Normal Input States (Arama ve Normal Giriş Durumları)
     var searchText by remember { mutableStateOf("") }
     var selectedFoodItem by remember { mutableStateOf<FoodItemKeepNote?>(null) }
+    var showSaveSummaryDialog by remember { mutableStateOf(false) }
 
     // Common Input States (Ortak Giriş Durumları - Hem normal hem manuel için)
     var quantity by remember { mutableStateOf("") }
@@ -811,6 +815,40 @@ fun KeepNotePage(navController: NavHostController) {
                         }
                     }
                 }
+
+                Button(
+                    onClick = { showSaveSummaryDialog = true },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp)
+                        .height(50.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = primaryColor,
+                        contentColor = onPrimaryColor
+                    )
+                ) {
+                    Text("Save Daily Totals", fontSize = 16.sp)
+                }
+
+                Button(
+                    onClick = { navController.navigate(Screens.DailySummaryScreen) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp)
+                        .height(50.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = primaryColor,
+                        contentColor = onPrimaryColor
+                    )
+                ) {
+                    Text("Go to Daily Summaries", fontSize = 16.sp)
+                }
+
+
+
+
             }
         } // LazyColumn Sonu
 
@@ -832,6 +870,34 @@ fun KeepNotePage(navController: NavHostController) {
                 dismissButton = {
                     TextButton(onClick = { showClearConfirmationDialog = false }) {
                         Text("Cancel", color = primaryColor, fontStyle = FontStyle.Italic)
+                    }
+                }
+            )
+        }
+
+        if (showSaveSummaryDialog) {
+            AlertDialog(
+                onDismissRequest = { showSaveSummaryDialog = false },
+                title = { Text("Save Daily Summary", color = primaryColor) },
+                text = { Text("Are you sure you want to save today's summary?") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        val saved = saveTodaySummary(context, totalCalories, totalProtein, totalFat, totalCarb)
+                        showSaveSummaryDialog = false
+                        if (saved) {
+                            Toast.makeText(context, "Summary saved!", Toast.LENGTH_SHORT).show()
+                            navController.navigate(Screens.DailySummaryScreen)
+                        } else {
+                            Toast.makeText(context, "You've already saved a summary for today.", Toast.LENGTH_SHORT).show()
+
+                        }
+                    }) {
+                        Text("Yes", color = primaryColor)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showSaveSummaryDialog = false }) {
+                        Text("Cancel", color = primaryColor)
                     }
                 }
             )

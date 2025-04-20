@@ -23,6 +23,9 @@ import com.ugraks.project1.Fitness.MainScreen
 import com.ugraks.project1.Recipes.RecipeDetailScreen
 import com.ugraks.project1.Recipes.RecipeListScreen
 import com.ugraks.project1.Fitness.loadExercisesFromAssets
+import com.ugraks.project1.KeepNoteComposable.DailySummariesPage
+import com.ugraks.project1.Pedometerr.DailySummaryPage
+
 
 
 @Composable
@@ -97,6 +100,20 @@ fun SayfaGecisleri() {
             StepCounterPage(navController)
 
         }
+
+        composable<Screens.DailySummaryScreen> {
+            DailySummariesPage(context = LocalContext.current,navController)
+
+        }
+
+        composable<Screens.PedometerDailySummary> {
+            DailySummaryPage(navController)
+
+        }
+
+
+
+
 
 
 

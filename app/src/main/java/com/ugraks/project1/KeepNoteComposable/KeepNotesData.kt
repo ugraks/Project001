@@ -3,6 +3,8 @@ package com.ugraks.project1.KeepNoteComposable
 import android.content.Context
 import java.io.File
 import java.io.InputStreamReader
+import java.time.LocalDate
+import kotlin.math.roundToInt
 
 data class FoodItemKeepNote(
     val name: String,
@@ -154,3 +156,54 @@ fun loadCalorieRecords(context: Context): List<CalorieRecord> {
 
     return loadedRecords
 }
+
+fun saveTodaySummary(context: Context, calories: Int, protein: Double, fat: Double, carbs: Double): Boolean {
+    val date = LocalDate.now().toString()  // Bugünün tarihi
+    val existingSummaries = readDailySummaries(context).toMutableList()  // Dosyadaki mevcut özetleri oku
+
+    // Eğer aynı tarihte bir özet varsa, ekleme yapma ve sadece "DailyScreen" sayfasına git
+    if (existingSummaries.any { it.date == date }) {
+        return false  // Aynı gün kaydedilemez, fakat ekrana yönlendirilebilir
+    }
+
+    // Yeni özet oluştur
+    val newSummary = DailySummary(date, calories, protein, fat, carbs)
+
+    // Yeni özet listeye ekle
+    existingSummaries.add(newSummary)
+
+    // Dosyaya kaydet
+    saveSummariesToFile(context, existingSummaries)
+
+    return true  // Başarılı şekilde kaydedildi
+}
+
+fun readDailySummaries(context: Context): List<DailySummary> {
+    val file = File(context.filesDir, "daily_summaries.txt")
+    if (!file.exists()) return emptyList()
+
+    val summaries = mutableListOf<DailySummary>()
+    val content = file.readText()
+    val entries = content.split("---").map { it.trim() }.filter { it.isNotEmpty() }
+
+    for (entry in entries) {
+        val lines = entry.lines()
+        val date = lines.getOrNull(0)?.removePrefix("Date: ")?.trim() ?: continue
+        val calories = lines.getOrNull(1)?.removePrefix("Calories: ")?.replace("kcal", "")?.trim()?.toIntOrNull() ?: 0
+        val protein = lines.getOrNull(2)?.removePrefix("Protein: ")?.replace("g", "")?.trim()?.toDoubleOrNull() ?: 0.0
+        val fat = lines.getOrNull(3)?.removePrefix("Fat: ")?.replace("g", "")?.trim()?.toDoubleOrNull() ?: 0.0
+        val carbs = lines.getOrNull(4)?.removePrefix("Carbs: ")?.replace("g", "")?.trim()?.toDoubleOrNull() ?: 0.0
+
+        summaries.add(DailySummary(date, calories, protein, fat, carbs))
+    }
+
+    return summaries
+}
+
+data class DailySummary(
+    val date: String,
+    val calories: Int,
+    val protein: Double,
+    val fat: Double,
+    val carbs: Double
+)

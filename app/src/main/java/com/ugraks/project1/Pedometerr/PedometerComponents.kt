@@ -1,10 +1,16 @@
 package com.ugraks.project1.Pedometerr
 
 import android.content.Context
+import android.util.Log
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.io.IOException // IOException eklendi
+
+// Aynı satırdaki birden fazla giriş için ayırıcı
+private const val ENTRY_DELIMITER = " | "
+private const val DATE_FORMAT = "yyyy-MM-dd"
 
 fun saveDailyStepCount(
     context: Context,
@@ -12,65 +18,129 @@ fun saveDailyStepCount(
     targetStep: Int? = null,
     goalReached: Boolean? = null
 ) {
-    val currentDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+    val currentDateString = SimpleDateFormat(DATE_FORMAT, Locale.getDefault()).format(Date())
     val file = File(context.filesDir, "daily_steps.txt")
 
-    // Hedefi kontrol et
-    val targetText = targetStep?.let { "Target: $it" } ?: "Target: Unknown" // Hedef belirlenmemişse 'Unknown'
-
-    // Başarı durumu kontrolü
-    val statusText = when {
-        targetStep == null -> "Success: Unknown"  // Hedef yoksa başarı durumu 'Unknown'
-        goalReached == true -> "Success: Successful"  // Hedef belirtilmişse ve başarılıysa
-        goalReached == false -> "Success: Unsuccessful"  // Hedef belirtilmişse ve başarısızsa
-        else -> "Success: Unknown" // Başarı durumu belirlenmemişse
+    val targetText = targetStep?.let { "Target: $it" } ?: "Target: Unknown"
+    val statusText = when (goalReached) {
+        true -> "Success: Successful"
+        false -> "Success: Unsuccessful"
+        else -> "Success: Unknown"
     }
 
-    // Örnek satır: 2025-04-20: 5000, Target: 6000, Success: Unsuccessful
-    val newLine = buildString {
-        append("$currentDate: $stepCount") // Adım sayısını ekle
-        append(", $targetText")            // Hedefi ekle
-        append(", $statusText")            // Başarı durumunu ekle
+    // Tek bir kaydetme detayının formatı (tarihsiz)
+    val saveEntryDetailString = "$stepCount, $targetText, $statusText"
+
+    val lines = try {
+        if (file.exists()) file.readLines().toMutableList() else mutableListOf()
+    } catch (e: IOException) {
+        Log.e("SaveDailyStepCount", "Error reading file before saving: ${e.message}")
+        return // Dosya okuma hatası varsa kaydetme
     }
 
-    // Dosyadaki mevcut satırları oku
-    val lines = if (file.exists()) file.readLines() else emptyList()
 
-    // Eğer aynı gün için yeni bir satır varsa, mevcut satırı güncelle
-    val updatedLines = lines.map { line ->
-        val parts = line.split(":")
-        if (parts.isNotEmpty() && parts[0].trim() == currentDate) {
-            newLine // Aynı tarihteki veriyi yeni satırla değiştir
-        } else {
-            line // Diğer satırları olduğu gibi bırak
+    var foundDateLineIndex = -1
+    // Tarih satırını ara
+    for (i in lines.indices) {
+        if (lines[i].startsWith(currentDateString + ":")) {
+            foundDateLineIndex = i
+            break
         }
-    }.toMutableList()
-
-    // Eğer mevcut satırda tarih bulunmuyorsa, yeni bir satır ekle
-    if (updatedLines.none { it.startsWith(currentDate) }) {
-        updatedLines.add(newLine)
     }
 
-    // Güncellenmiş satırları dosyaya yaz
-    file.writeText(updatedLines.joinToString("\n"))
+    if (foundDateLineIndex != -1) {
+        // Eğer tarih satırı bulunursa, yeni giriş detayını mevcut satıra ekle
+        val existingLine = lines[foundDateLineIndex]
+        lines[foundDateLineIndex] = "$existingLine$ENTRY_DELIMITER$saveEntryDetailString"
+        Log.d("SaveDailyStepCount", "Appended entry to existing line for $currentDateString.")
+    } else {
+        // Eğer tarih satırı bulunamazsa, bu tarih için yeni bir satır ekle
+        lines.add("$currentDateString:$saveEntryDetailString")
+        Log.d("SaveDailyStepCount", "Added new line for date $currentDateString.")
+    }
+
+    try {
+        // Güncellenmiş satırlarla tüm dosyayı yeniden yaz
+        file.writeText(lines.joinToString("\n"))
+        Log.d("SaveDailyStepCount", "File rewritten successfully.")
+    } catch (e: IOException) {
+        Log.e("SaveDailyStepCount", "Error writing file after saving: ${e.message}")
+    }
 }
 
-
-
-fun deleteEntry(context: Context, entry: String) {
+// deleteEntry, belirli bir tarihteki satırdan belirli bir detay stringini kaldıracak şekilde değiştirildi
+fun deleteEntry(context: Context, date: String, entryDetailString: String) {
     val file = File(context.filesDir, "daily_steps.txt")
-    if (file.exists()) {
-        val lines = file.readLines().toMutableList()
-        lines.remove(entry)
-        file.writeText(lines.joinToString("\n"))
+    if (!file.exists()) {
+        Log.w("DeleteEntry", "File not found for deletion.")
+        return
+    }
+
+    val lines = try {
+        file.readLines().toMutableList()
+    } catch (e: IOException) {
+        Log.e("DeleteEntry", "Error reading file for deletion: ${e.message}")
+        return
+    }
+
+    var lineModifiedOrRemoved = false
+    val updatedLines = lines.mapNotNull { line ->
+        if (line.startsWith("$date:")) {
+            val dateAndData = line.split(":", limit = 2)
+            if (dateAndData.size == 2) {
+                val datePart = dateAndData[0]
+                val dataPart = dateAndData[1]
+
+                val entriesForDay = dataPart.split(ENTRY_DELIMITER).toMutableList()
+                val originalSize = entriesForDay.size
+                // Belirli detay stringini kaldır (trimleyerek boşluk farklarını göz ardı et)
+                entriesForDay.removeIf { it.trim() == entryDetailString.trim() }
+
+
+                if (entriesForDay.size < originalSize) {
+                    lineModifiedOrRemoved = true
+                }
+
+                if (entriesForDay.isNotEmpty()) {
+                    // Kalan girişleri birleştir ve satırı tut
+                    "$datePart:${entriesForDay.joinToString(ENTRY_DELIMITER)}"
+                } else {
+                    // Bu tarih için hiç giriş kalmadı, tüm satırı kaldır
+                    null // mapNotNull için null döndürmek öğeyi kaldırır
+                }
+            } else {
+                // Hedef tarih için hatalı biçimlendirilmiş satır, sakla ama uyarı logu ver
+                Log.w("DeleteEntry", "Malformed line found for date $date during deletion attempt: $line")
+                line
+            }
+        } else {
+            // Hedef tarih satırı değil, sakla
+            line
+        }
+    }
+
+    if (lineModifiedOrRemoved) {
+        try {
+            file.writeText(updatedLines.joinToString("\n"))
+            Log.d("DeleteEntry", "Entry detail deleted and file updated for date: $date")
+        } catch (e: IOException) {
+            Log.e("DeleteEntry", "Error rewriting file after deletion: ${e.message}")
+        }
+    } else {
+        Log.w("DeleteEntry", "Specific entry detail not found for deletion on date $date or file not modified.")
     }
 }
 
 fun clearAllSummaries(context: Context) {
     val file = File(context.filesDir, "daily_steps.txt")
     if (file.exists()) {
-        file.delete()
+        try {
+            file.delete()
+            Log.d("ClearAllSummaries", "All summaries cleared.")
+        } catch (e: IOException) {
+            Log.e("ClearAllSummaries", "Error clearing summaries: ${e.message}")
+        }
+    } else {
+        Log.w("ClearAllSummaries", "File not found for clearing.")
     }
 }
-
-

@@ -2,9 +2,11 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -37,6 +39,7 @@ import com.ugraks.project1.AppNavigation.Screens
 import com.ugraks.project1.Pedometerr.StepCounterService // StepCounterService ve diğer ilgili sınıfların projenizde tanımlı olduğunu varsayıyorum.
 import com.ugraks.project1.Pedometerr.saveDailyStepCount
 
+@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StepCounterPage(navController: NavHostController) {

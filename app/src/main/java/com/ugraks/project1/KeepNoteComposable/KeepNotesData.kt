@@ -1,7 +1,9 @@
 package com.ugraks.project1.KeepNoteComposable
 
 import android.content.Context
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import java.io.File
 import java.io.InputStreamReader
@@ -167,6 +169,7 @@ fun loadCalorieRecords(context: Context): List<CalorieRecord> {
     return loadedRecords
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 fun saveTodaySummary(context: Context, calories: Int, protein: Double, fat: Double, carbs: Double): SaveSummaryResult {
     val date = LocalDate.now().toString()  // Bugünün tarihi
     val file = File(context.filesDir, "daily_summaries.txt")

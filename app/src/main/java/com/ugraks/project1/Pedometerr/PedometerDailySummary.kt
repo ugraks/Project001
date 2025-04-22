@@ -9,7 +9,17 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Divider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -246,7 +256,7 @@ fun DailySummaryPage(navController: NavController) {
                                         Log.d("DailySummaryPage", "Prepare to delete entry at index $index for date $date with content: ${entryDetail.originalDetailString}")
                                     }
                                 ) {
-                                    androidx.compose.material.Icon(
+                                    Icon(
                                         Icons.Default.Delete,
                                         contentDescription = "Delete Entry",
                                         tint = Color.Red,

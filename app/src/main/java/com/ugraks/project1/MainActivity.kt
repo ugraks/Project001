@@ -1,9 +1,11 @@
 package com.ugraks.project1
 
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -16,8 +18,11 @@ import androidx.navigation.NavHostController
 import com.ugraks.project1.AppNavigation.SayfaGecisleri
 import com.ugraks.project1.AppNavigation.Screens
 import com.ugraks.project1.ui.theme.Project1Theme
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         val isRestarting = savedInstanceState != null
 

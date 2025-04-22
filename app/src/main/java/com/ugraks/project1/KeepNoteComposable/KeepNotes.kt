@@ -1,9 +1,9 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
-
-package com.ugraks.project1 // Paket adınızı kontrol edin
+package com.ugraks.project1 // Kendi paket adınız
 
 import android.content.Context
+import android.os.Build
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -31,29 +31,32 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel // Hilt ViewModel için import
 import androidx.navigation.NavHostController
-import com.ugraks.project1.AppNavigation.Screens
-import com.ugraks.project1.KeepNoteComposable.CalorieRecord
-import com.ugraks.project1.KeepNoteComposable.FoodItemKeepNote
-import com.ugraks.project1.KeepNoteComposable.loadCalorieRecords
-import com.ugraks.project1.KeepNoteComposable.readFoodItemsFromAssets
-import com.ugraks.project1.KeepNoteComposable.saveCalorieRecords
-import com.ugraks.project1.KeepNoteComposable.saveTodaySummary // Güncellenmiş fonksiyon
-import com.ugraks.project1.KeepNoteComposable.SaveSummaryResult // Yeni eklenen enum
-import com.ugraks.project1.KeepNoteComposable.readDailySummaries // Bugünkü özetin varlığını kontrol etmek için
-import java.time.LocalDate // LocalDate için import
-import java.io.File
-import java.io.InputStreamReader
+import com.ugraks.project1.AppNavigation.Screens // Navigasyon ekranları
+import com.ugraks.project1.KeepNoteComposable.FoodItemKeepNote // FoodItemKeepNote (asset'ten okunuyor olabilir)
+import com.ugraks.project1.data.local.entity.CalorieRecordEntity // YENİ Room Entity
+import com.ugraks.project1.ui.viewmodels.CalorieViewModel // Kendi ViewModel'ınız
+import kotlinx.coroutines.launch // Coroutine başlatmak için
+import java.time.LocalDate // LocalDate için import (API 26+)
 import java.util.Locale
 import kotlin.math.roundToInt
 
+@RequiresApi(Build.VERSION_CODES.O) // LocalDate kullanımı nedeniyle gerekebilir
+@OptIn(ExperimentalMaterial3Api::class) // Material 3 opt-in gerektiriyorsa
 @Composable
-fun KeepNotePage(navController: NavHostController) {
+fun KeepNotePage(
+    navController: NavHostController,
+    viewModel: CalorieViewModel = hiltViewModel() // ViewModel'ı Hilt ile inject et
+) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope() // suspend fonksiyonları çağırmak için scope
 
-    // State management
-    val allFoodItems = remember { mutableStateListOf<FoodItemKeepNote>() }
-    val calorieRecords = remember { mutableStateListOf<CalorieRecord>() }
+    // --- State Management ---
+    // allFoodItems ViewModel'dan alınacak veya hala asset'ten okunacaksa burada tutulur
+    val allFoodItems = remember { mutableStateListOf<FoodItemKeepNote>().apply { addAll(viewModel.allFoodItems) } }
+    // calorieRecords artık ViewModel'dan Room'dan gelen Flow/StateFlow'u izleyecek
+    val calorieRecords by viewModel.calorieRecords.collectAsState() // Room'dan gelen kayıt listesi
 
     var isManualEntryMode by remember { mutableStateOf(false) }
 
@@ -63,9 +66,9 @@ fun KeepNotePage(navController: NavHostController) {
 
     // --- Dialog States ---
     var showSaveSummaryDialog by remember { mutableStateOf(false) }
-    var showUpdateSummaryDialog by remember { mutableStateOf(false) } // Yeni durum değişkeni
+    var showUpdateSummaryDialog by remember { mutableStateOf(false) }
     var showClearConfirmationDialog by remember { mutableStateOf(false) }
-    var selectedRecordToDelete by remember { mutableStateOf<CalorieRecord?>(null) }
+    var selectedRecordToDelete by remember { mutableStateOf<CalorieRecordEntity?>(null) } // Tipi CalorieRecordEntity oldu
     var showDeleteConfirmationDialog by remember { mutableStateOf(false) }
 
 
@@ -85,11 +88,11 @@ fun KeepNotePage(navController: NavHostController) {
     var manualCarbInput by remember { mutableStateOf("") }
 
 
-    // State for Total Calories/Macros
-    var totalCalories by remember { mutableStateOf(0) }
-    var totalProtein by remember { mutableStateOf(0.0) }
-    var totalFat by remember { mutableStateOf(0.0) }
-    var totalCarb by remember { mutableStateOf(0.0) }
+    // State for Total Calories/Macros (calorieRecords listesi değiştikçe otomatik hesaplanır)
+    val totalCalories = remember(calorieRecords) { calorieRecords.sumOf { it.totalCalories } }
+    val totalProtein = remember(calorieRecords) { calorieRecords.sumOf { it.totalProtein } }
+    val totalFat = remember(calorieRecords) { calorieRecords.sumOf { it.totalFat } }
+    val totalCarb = remember(calorieRecords) { calorieRecords.sumOf { it.totalCarb } }
 
 
     // Color scheme
@@ -103,41 +106,28 @@ fun KeepNotePage(navController: NavHostController) {
 
 
     // LaunchedEffect: Uygulama ilk açıldığında veya bu Composable ilk oluşturulduğunda çalışır
+    // TXT'den veri yükleme LaunchedEffect'i artık GEREKMEZ, ViewModel Flow sağlar.
     LaunchedEffect(Unit) {
-        // 1. Assets dosyasından tüm yiyecekleri oku
-        allFoodItems.addAll(readFoodItemsFromAssets(context))
-        // 2. Kayıtları dosyadan yükle ve listeye ekle
-        val loaded = loadCalorieRecords(context)
-        calorieRecords.addAll(loaded)
+        // allFoodItems ViewModel başlatıldığında asset'ten okunur
+        // calorieRecords ViewModel'dan Flow ile izlenir
     }
 
-    // filteredFoodList: Arama metnine göre filtrelenmiş yiyecek listesi
+
+    // Effekt: Kayıtlar değiştikçe bugün için özet var mı kontrol et (Save/Update butonu için)
+    var todayHasSummary by remember { mutableStateOf(false) }
+    LaunchedEffect(calorieRecords) { // calorieRecords listesi veya ilk açılış değiştiğinde
+        // ViewModel'ın suspend fonksiyonunu CoroutineScope içinde çağır
+        todayHasSummary = viewModel.checkTodaySummaryExists()
+    }
+
+
+    // filteredFoodList: Arama metnine göre filtrelenmiş yiyecek listesi (Asset'ten okunan listeden)
     val filteredFoodList = remember(allFoodItems, searchText) {
         if (searchText.isEmpty()) {
             emptyList()
         } else {
-            allFoodItems.filter { it.name.toLowerCase(Locale.getDefault()).contains(searchText.toLowerCase(Locale.getDefault())) }
+            allFoodItems.filter { it.name.lowercase(Locale.getDefault()).contains(searchText.lowercase(Locale.getDefault())) }
         }
-    }
-
-
-    // Effect to update totals whenever calorieRecords changes
-    LaunchedEffect(calorieRecords.size, calorieRecords.toList()) { // toList() içeriği gözlemlemek için
-        totalCalories = calorieRecords.sumOf { it.calories }
-        totalProtein = calorieRecords.sumOf { it.protein }
-        totalFat = calorieRecords.sumOf { it.fat }
-        totalCarb = calorieRecords.sumOf { it.carb }
-    }
-
-    // Effect to reset manual unit when manual type changes
-    LaunchedEffect(manualSelectedType) {
-        selectedManualUnit = if (manualSelectedType == "Food") "g" else "ml"
-    }
-
-    // Bugün için özetin zaten var olup olmadığını kontrol eden durum
-    // calorieRecords her değiştiğinde yeniden kontrol edilir (bu durum, butonu etkiler)
-    val todayHasSummary = remember(calorieRecords.size) {
-        readDailySummaries(context).any { it.date == LocalDate.now().toString() }
     }
 
 
@@ -451,7 +441,7 @@ fun KeepNotePage(navController: NavHostController) {
                             RadioButton( selected = manualSelectedType == "Food", onClick = { manualSelectedType = "Food" } )
                             Text("Food", style = MaterialTheme.typography.bodyMedium, color = contentColor)
                         }
-                        Row(modifier = Modifier.selectable( selected = manualSelectedType == "Drink", onClick = { manualSelectedType == "Drink" }).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Row(modifier = Modifier.selectable( selected = manualSelectedType == "Drink", onClick = { manualSelectedType = "Drink" }).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                             RadioButton( selected = manualSelectedType == "Drink", onClick = { manualSelectedType = "Drink" } )
                             Text("Drink", style = MaterialTheme.typography.bodyMedium, color = contentColor)
                         }
@@ -507,15 +497,15 @@ fun KeepNotePage(navController: NavHostController) {
                     }
                 }
 
+                item { Spacer(modifier = Modifier.height(12.dp)) } // Manuel Time öncesi boşluk
+
                 // Item for Time Input (Manuel Mod)
                 item {
                     OutlinedTextField(
                         value = time,
                         onValueChange = { time = it },
                         label = { Text("Time (e.g., 12:30)", color = primaryColor) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 12.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
                         colors = TextFieldDefaults.colors( focusedContainerColor = colorScheme.surface, unfocusedContainerColor = colorScheme.surface, focusedIndicatorColor = primaryColor, unfocusedIndicatorColor = Color.Gray, cursorColor = primaryColor )
                     )
@@ -596,53 +586,64 @@ fun KeepNotePage(navController: NavHostController) {
                         val quantityValue = quantity.toDoubleOrNull() ?: 0.0
                         val item = selectedFoodItem
 
-                        val unitScale = when {
-                            isManualEntryMode -> when(selectedManualUnit) {
-                                "kg", "L" -> quantityValue
-                                "g", "ml" -> quantityValue / 1000.0
-                                else -> 0.0
-                            }
-                            !isManualEntryMode && item != null -> when(
-                                if (item.type == "Food") { if (isKilogram) "kg" else "g" } else { if (isLiter) "L" else "ml" }
-                            ) {
-                                "kg", "L" -> quantityValue
-                                "g", "ml" -> quantityValue / 1000.0
-                                else -> 0.0
-                            }
-                            else -> 0.0
-                        }
+                        // Manuel veya Normal Giriş moduna göre hesaplanacak veya manuel girilen değerler kullanılacak
+                        val calculatedCalories: Int
+                        val calculatedProtein: Double
+                        val calculatedFat: Double
+                        val calculatedCarb: Double
+                        val recordFoodName: String
+                        val recordOriginalCaloriesPer1000: Int
+                        val recordFoodType: String
+                        val recordOriginalProteinPerKgL: Double
+                        val recordOriginalFatPerKgL: Double
+                        val recordOriginalCarbPerKgL: Double
+                        val recordUnit: String
 
 
                         if (isManualEntryMode) {
-                            val manualCalories = manualCaloriesInput.toIntOrNull() ?: 0
-                            val manualProtein = manualProteinInput.toDoubleOrNull() ?: 0.0
-                            val manualFat = manualFatInput.toDoubleOrNull() ?: 0.0
-                            val manualCarb = manualCarbInput.toDoubleOrNull() ?: 0.0
+                            calculatedCalories = manualCaloriesInput.toIntOrNull() ?: 0
+                            calculatedProtein = manualProteinInput.toDoubleOrNull() ?: 0.0
+                            calculatedFat = manualFatInput.toDoubleOrNull() ?: 0.0
+                            calculatedCarb = manualCarbInput.toDoubleOrNull() ?: 0.0
+                            recordFoodName = manualFoodName
+                            recordOriginalCaloriesPer1000 = 0 // Manuel girişte orijinal değer 0 olabilir
+                            recordFoodType = manualSelectedType
+                            recordOriginalProteinPerKgL = 0.0
+                            recordOriginalFatPerKgL = 0.0
+                            recordOriginalCarbPerKgL = 0.0
+                            recordUnit = selectedManualUnit
+
 
                             // Manuel giriş alanlarının boş olmadığını, miktar > 0 olduğunu ve zamanın boş olmadığını kontrol et
                             if (manualFoodName.isNotEmpty() && quantity.isNotEmpty() && quantityValue > 0 && time.isNotEmpty() &&
                                 manualCaloriesInput.isNotEmpty() && manualProteinInput.isNotEmpty() && manualFatInput.isNotEmpty() && manualCarbInput.isNotEmpty()) {
 
                                 // Ayrıştırılan değerlerin negatif olmadığını kontrol et
-                                if (manualCalories >= 0 && manualProtein >= 0.0 && manualFat >= 0.0 && manualCarb >= 0.0) {
-                                    val unit = selectedManualUnit
-                                    calorieRecords.add(
-                                        CalorieRecord(
-                                            foodItem = FoodItemKeepNote(manualFoodName, 0, manualSelectedType, 0.0, 0.0, 0.0),
-                                            quantity = quantityValue,
-                                            unit = unit,
-                                            time = time,
-                                            calories = manualCalories,
-                                            protein = manualProtein,
-                                            fat = manualFat,
-                                            carb = manualCarb
-                                        )
-                                    )
-                                    // Kayıt listesi güncellendikten sonra DOSYAYA KAYDET
-                                    saveCalorieRecords(context, calorieRecords.toList())
+                                if (calculatedCalories >= 0 && calculatedProtein >= 0.0 && calculatedFat >= 0.0 && calculatedCarb >= 0.0) {
 
-                                    // Alanları temizle
-                                    isManualEntryMode = false // Manuel moddan çık
+                                    // YENİ: CalorieRecordEntity oluştur
+                                    val newRecordEntity = CalorieRecordEntity(
+                                        foodName = recordFoodName,
+                                        originalCaloriesPer1000 = recordOriginalCaloriesPer1000,
+                                        foodType = recordFoodType,
+                                        originalProteinPerKgL = recordOriginalProteinPerKgL,
+                                        originalFatPerKgL = recordOriginalFatPerKgL,
+                                        originalCarbPerKgL = recordOriginalCarbPerKgL,
+                                        quantity = quantityValue,
+                                        unit = recordUnit,
+                                        time = time,
+                                        totalCalories = calculatedCalories,
+                                        totalProtein = calculatedProtein,
+                                        totalFat = calculatedFat,
+                                        totalCarb = calculatedCarb // Alan adını kontrol edin
+                                    )
+
+                                    // YENİ: ViewModel üzerinden Room'a ekle
+                                    viewModel.addCalorieRecord(newRecordEntity)
+                                    // ESKİ: calorieRecords.add(...) ve saveCalorieRecords(...) çağrıları kaldırıldı
+
+                                    // Alanları temizle ve modu sıfırla
+                                    isManualEntryMode = false
                                     manualFoodName = ""
                                     manualCaloriesInput = ""
                                     manualProteinInput = ""
@@ -663,36 +664,54 @@ fun KeepNotePage(navController: NavHostController) {
                             } else {
                                 Toast.makeText(context, "Please fill all required fields for manual entry.", Toast.LENGTH_SHORT).show()
                             }
-                        } else {
-                            // Normal Giriş Modu
+
+                        } else { // Normal Giriş Modu
                             // Yiyecek seçili olduğunu, miktar alanının boş olmadığını, miktarın > 0 olduğunu ve zamanın boş olmadığını kontrol et
                             if (item != null && quantity.isNotEmpty() && quantityValue > 0 && time.isNotEmpty()) {
-                                val caloriesPer1000Units = item.calories.toDouble()
-                                val proteinPer1000Units = item.proteinPerKgL
-                                val fatPer1000Units = item.fatPerKgL
-                                val carbPer1000Units = item.carbPerKgL
 
-                                val calculatedCalories = (caloriesPer1000Units * unitScale).roundToInt()
-                                val calculatedProtein = proteinPer1000Units * unitScale
-                                val calculatedFat = fatPer1000Units * unitScale
-                                val calculatedCarb = carbPer1000Units * unitScale
+                                // Hesaplama mantığı aynı kalır
+                                val unitScale = when(
+                                    if (item.type == "Food") { if (isKilogram) "kg" else "g" } else { if (isLiter) "L" else "ml" }
+                                ) {
+                                    "kg", "L" -> quantityValue
+                                    "g", "ml" -> quantityValue / 1000.0
+                                    else -> 0.0
+                                }
 
-                                val unit = if (item.type == "Food") { if (isKilogram) "kg" else "g" } else { if (isLiter) "L" else "ml" }
+                                calculatedCalories = (item.calories.toDouble() * unitScale).roundToInt()
+                                calculatedProtein = item.proteinPerKgL * unitScale
+                                calculatedFat = item.fatPerKgL * unitScale
+                                calculatedCarb = item.carbPerKgL * unitScale
 
-                                calorieRecords.add(
-                                    CalorieRecord(
-                                        foodItem = item,
-                                        quantity = quantityValue,
-                                        unit = unit,
-                                        time = time,
-                                        calories = calculatedCalories,
-                                        protein = calculatedProtein,
-                                        fat = calculatedFat,
-                                        carb = calculatedCarb
-                                    )
+                                recordFoodName = item.name
+                                recordOriginalCaloriesPer1000 = item.calories
+                                recordFoodType = item.type
+                                recordOriginalProteinPerKgL = item.proteinPerKgL
+                                recordOriginalFatPerKgL = item.fatPerKgL
+                                recordOriginalCarbPerKgL = item.carbPerKgL
+                                recordUnit = if (item.type == "Food") { if (isKilogram) "kg" else "g" } else { if (isLiter) "L" else "ml" }
+
+
+                                // YENİ: CalorieRecordEntity oluştur
+                                val newRecordEntity = CalorieRecordEntity(
+                                    foodName = recordFoodName,
+                                    originalCaloriesPer1000 = recordOriginalCaloriesPer1000,
+                                    foodType = recordFoodType,
+                                    originalProteinPerKgL = recordOriginalProteinPerKgL,
+                                    originalFatPerKgL = recordOriginalFatPerKgL,
+                                    originalCarbPerKgL = recordOriginalCarbPerKgL,
+                                    quantity = quantityValue,
+                                    unit = recordUnit,
+                                    time = time,
+                                    totalCalories = calculatedCalories,
+                                    totalProtein = calculatedProtein,
+                                    totalFat = calculatedFat,
+                                    totalCarb = calculatedCarb // Alan adını kontrol edin
                                 )
-                                // Kayıt listesi güncellendikten sonra DOSYAYA KAYDET
-                                saveCalorieRecords(context, calorieRecords.toList())
+
+                                // YENİ: ViewModel üzerinden Room'a ekle
+                                viewModel.addCalorieRecord(newRecordEntity)
+                                // ESKİ: calorieRecords.add(...) ve saveCalorieRecords(...) çağrıları kaldırıldı
 
                                 // Alanları temizle
                                 selectedFoodItem = null
@@ -707,7 +726,7 @@ fun KeepNotePage(navController: NavHostController) {
                             }
                         }
                     },
-                    // Butonun aktif olup olmayacağını belirleyen koşullar
+                    // Butonun aktif olup olmayacağını belirleyen koşullar (aynı kalır)
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(50.dp),
@@ -741,8 +760,9 @@ fun KeepNotePage(navController: NavHostController) {
             }
 
 
-            // Items for Calorie Records List
-            itemsIndexed(calorieRecords) { index, record ->
+            // Items for Calorie Records List (Room'dan gelen calorieRecords listesi kullanılır)
+            // itemsIndexed(calorieRecords) { index, record -> // record artık CalorieRecordEntity
+            itemsIndexed(calorieRecords) { index, recordEntity -> // YENİ: recordEntity kullanın
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -759,30 +779,33 @@ fun KeepNotePage(navController: NavHostController) {
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                            // record.foodItem.name yerine recordEntity.foodName
                             Text(
-                                text = record.foodItem.name,
+                                text = recordEntity.foodName,
                                 style = MaterialTheme.typography.titleMedium, fontStyle = FontStyle.Italic, color = primaryColor, fontWeight = FontWeight.Medium
                             )
+                            // record.quantity, record.unit, record.time yerine recordEntity.quantity, recordEntity.unit, recordEntity.time
                             Text(
-                                text = "${record.quantity} ${record.unit} - ${record.time}",
+                                text = "${recordEntity.quantity} ${recordEntity.unit} - ${recordEntity.time}",
                                 style = MaterialTheme.typography.bodyMedium, color = contentColor
                             )
-                            // Makro toplamlarını göster (Sıfırdan büyükse)
-                            if (record.protein > 0.0 || record.fat > 0.0 || record.carb > 0.0) {
+                            // Makro toplamlarını göster (Sıfırdan büyükse) - Alan adlarını kontrol edin
+                            if (recordEntity.totalProtein > 0.0 || recordEntity.totalFat > 0.0 || recordEntity.totalCarb > 0.0) {
                                 Text(
-                                    text = "P: ${record.protein.roundToInt()}g, F: ${record.fat.roundToInt()}g, C: ${record.carb.roundToInt()}g",
+                                    text = "P: ${recordEntity.totalProtein.roundToInt()}g, F: ${recordEntity.totalFat.roundToInt()}g, C: ${recordEntity.totalCarb.roundToInt()}g",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = contentColor.copy(alpha = 0.8f)
                                 )
                             }
                         }
                         Column(horizontalAlignment = Alignment.End) {
+                            // record.calories yerine recordEntity.totalCalories
                             Text(
-                                text = "${record.calories} kcal",
+                                text = "${recordEntity.totalCalories} kcal",
                                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold), color = primaryColor
                             )
                             // Silme butonu
-                            IconButton( onClick = { selectedRecordToDelete = record; showDeleteConfirmationDialog = true } ) {
+                            IconButton( onClick = { selectedRecordToDelete = recordEntity; showDeleteConfirmationDialog = true } ) { // YENİ: selectedRecordToDelete tipi CalorieRecordEntity
                                 Icon( imageVector = Icons.Outlined.Delete, contentDescription = "Delete Record", tint = primaryColor )
                             }
                         }
@@ -790,7 +813,7 @@ fun KeepNotePage(navController: NavHostController) {
                 }
             }
 
-            // Item for TOTAL CALORIES AND MACROS DISPLAY
+            // Item for TOTAL CALORIES AND MACROS DISPLAY (calorieRecords listesi değiştikçe otomatik güncellenir)
             item {
                 Card(
                     modifier = Modifier
@@ -843,7 +866,8 @@ fun KeepNotePage(navController: NavHostController) {
                         containerColor = primaryColor,
                         contentColor = onPrimaryColor
                     ),
-                    enabled = calorieRecords.isNotEmpty() && totalCalories > 0 // Kaydedilmiş kayıtlar varsa ve toplam kalori > 0 ise butonu aktif et
+                    // Kaydedilmiş kayıtlar varsa ve toplam kalori > 0 ise butonu aktif et (aynı kalır)
+                    enabled = calorieRecords.isNotEmpty() && totalCalories > 0
                 ) {
                     Text(if (todayHasSummary) "Update Daily Totals" else "Save Daily Totals", fontSize = 16.sp)
                 }
@@ -862,16 +886,12 @@ fun KeepNotePage(navController: NavHostController) {
                 ) {
                     Text("Go to Daily Summaries", fontSize = 16.sp)
                 }
-
-
-
-
             }
         } // LazyColumn Sonu
 
         // --- Dialogs --- (Kaydırılabilir alanın dışında kalır)
 
-        // 1. Clear All Records Dialog (Aynı kalıyor)
+        // 1. Clear All Records Dialog
         if (showClearConfirmationDialog) {
             AlertDialog(
                 onDismissRequest = { showClearConfirmationDialog = false },
@@ -879,8 +899,9 @@ fun KeepNotePage(navController: NavHostController) {
                 text = { Text("Are you sure you want to clear all calorie records?") },
                 confirmButton = {
                     TextButton(onClick = {
-                        calorieRecords.clear()
-                        saveCalorieRecords(context, calorieRecords.toList()) // TEMİZLEDİKTEN SONRA KAYDET
+                        // YENİ: ViewModel üzerinden tüm kayıtları sil
+                        viewModel.clearAllCalorieRecords()
+                        // ESKİ: calorieRecords.clear() ve saveCalorieRecords(...) çağrıları kaldırıldı
                         showClearConfirmationDialog = false
                         Toast.makeText(context, "All records cleared!", Toast.LENGTH_SHORT).show()
                     }) {
@@ -895,7 +916,7 @@ fun KeepNotePage(navController: NavHostController) {
             )
         }
 
-        // 2. Initial Save Daily Summary Dialog (İlk Kaydetme Dialogu - saveTodaySummary çağrısı güncellendi)
+        // 2. Initial Save Daily Summary Dialog
         if (showSaveSummaryDialog) {
             AlertDialog(
                 onDismissRequest = { showSaveSummaryDialog = false },
@@ -903,23 +924,14 @@ fun KeepNotePage(navController: NavHostController) {
                 text = { Text("Are you sure you want to save today's summary?") },
                 confirmButton = {
                     TextButton(onClick = {
-                        val result = saveTodaySummary(context, totalCalories, totalProtein, totalFat, totalCarb) // Güncellenmiş fonksiyonu çağır
-                        showSaveSummaryDialog = false // Dialogu kapat
-
-                        when(result) {
-                            SaveSummaryResult.NEWLY_SAVED -> {
-                                Toast.makeText(context, "Summary saved!", Toast.LENGTH_SHORT).show()
-                                navController.navigate(Screens.DailySummaryScreen) // Başarılı kayıtta navigate
-                            }
-                            SaveSummaryResult.UPDATED -> {
-                                // Bu senaryoda buraya düşmemesi beklenir, çünkü check yapılıyor.
-                                Toast.makeText(context, "Unexpected result: Summary was updated instead of newly saved.", Toast.LENGTH_SHORT).show()
-                            }
-                            SaveSummaryResult.NO_ACTION -> { /* Should not happen here */ }
-                            SaveSummaryResult.ERROR -> {
-                                Toast.makeText(context, "Error saving summary.", Toast.LENGTH_SHORT).show()
-                            }
+                        // YENİ: ViewModel üzerinden günlük özeti kaydet/güncelle
+                        coroutineScope.launch { // ViewModel suspend fonksiyonu için scope
+                            viewModel.saveOrUpdateDailySummary(totalCalories, totalProtein, totalFat, totalCarb)
+                            showSaveSummaryDialog = false // Dialogu kapat
+                            Toast.makeText(context, "Summary saved!", Toast.LENGTH_SHORT).show()
+                            navController.navigate(Screens.DailySummaryScreen) // Başarılı kayıtta navigate
                         }
+                        // ESKİ: saveTodaySummary(...) çağrısı kaldırıldı ve result kontrolü ViewModel içine taşındı
                     }) {
                         Text("Yes", color = primaryColor)
                     }
@@ -932,7 +944,7 @@ fun KeepNotePage(navController: NavHostController) {
             )
         }
 
-        // --- 3. Update Daily Summary Dialog (Yeni Eklendi) ---
+        // --- 3. Update Daily Summary Dialog ---
         if (showUpdateSummaryDialog) {
             AlertDialog(
                 onDismissRequest = { showUpdateSummaryDialog = false },
@@ -940,24 +952,15 @@ fun KeepNotePage(navController: NavHostController) {
                 text = { Text("A summary for today already exists. Do you want to update it with the current totals?") },
                 confirmButton = {
                     TextButton(onClick = {
-                        val result = saveTodaySummary(context, totalCalories, totalProtein, totalFat, totalCarb) // Güncellenmiş fonksiyonu çağır
-                        showUpdateSummaryDialog = false // Dialogu kapat
-
-                        when(result) {
-                            SaveSummaryResult.UPDATED -> {
-                                Toast.makeText(context, "Summary updated!", Toast.LENGTH_SHORT).show()
-                                // Güncellemeden sonra da Daily Summary ekranına yönlendirebiliriz
-                                navController.navigate(Screens.DailySummaryScreen)
-                            }
-                            SaveSummaryResult.NEWLY_SAVED -> {
-                                // Bu senaryoda buraya düşmemesi beklenir.
-                                Toast.makeText(context, "Unexpected result: Summary was newly saved instead of updated.", Toast.LENGTH_SHORT).show()
-                            }
-                            SaveSummaryResult.NO_ACTION -> { /* Should not happen here */ }
-                            SaveSummaryResult.ERROR -> {
-                                Toast.makeText(context, "Error updating summary.", Toast.LENGTH_SHORT).show()
-                            }
+                        // YENİ: ViewModel üzerinden günlük özeti kaydet/güncelle
+                        coroutineScope.launch { // ViewModel suspend fonksiyonu için scope
+                            viewModel.saveOrUpdateDailySummary(totalCalories, totalProtein, totalFat, totalCarb)
+                            showUpdateSummaryDialog = false // Dialogu kapat
+                            Toast.makeText(context, "Summary updated!", Toast.LENGTH_SHORT).show()
+                            // Güncellemeden sonra da Daily Summary ekranına yönlendirebiliriz
+                            navController.navigate(Screens.DailySummaryScreen)
                         }
+                        // ESKİ: saveTodaySummary(...) çağrısı kaldırıldı ve result kontrolü ViewModel içine taşındı
                     }) {
                         Text("Update", color = primaryColor) // Buton metni "Update"
                     }
@@ -971,16 +974,19 @@ fun KeepNotePage(navController: NavHostController) {
         }
 
 
-        // 4. Delete Single Record Dialog (Aynı kalıyor)
-        if (showDeleteConfirmationDialog && selectedRecordToDelete != null) {
+        // 4. Delete Single Record Dialog
+        if (showDeleteConfirmationDialog && selectedRecordToDelete != null) { // selectedRecordToDelete CalorieRecordEntity tipinde
             AlertDialog(
                 onDismissRequest = { showDeleteConfirmationDialog = false; selectedRecordToDelete = null },
                 title = { Text("Delete Record", color = primaryColor, fontStyle = FontStyle.Italic) },
                 text = { Text("Are you sure you want to delete this record?") },
                 confirmButton = {
                     TextButton(onClick = {
-                        calorieRecords.remove(selectedRecordToDelete!!)
-                        saveCalorieRecords(context, calorieRecords.toList()) // SİLDİKTEN SONRA KAYDET
+                        // YENİ: ViewModel üzerinden belirli kaydı sil
+                        selectedRecordToDelete?.let { recordEntity ->
+                            viewModel.deleteCalorieRecord(recordEntity) // ViewModel metodunu çağır
+                            // ESKİ: calorieRecords.remove(...) ve saveCalorieRecords(...) çağrıları kaldırıldı
+                        }
                         showDeleteConfirmationDialog = false
                         selectedRecordToDelete = null
                         Toast.makeText(context, "Record deleted!", Toast.LENGTH_SHORT).show()

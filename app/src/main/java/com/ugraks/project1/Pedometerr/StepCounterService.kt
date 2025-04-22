@@ -7,10 +7,12 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.os.Build
 import android.os.IBinder
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 
 class StepCounterService : Service(), SensorEventListener {
@@ -55,6 +57,7 @@ class StepCounterService : Service(), SensorEventListener {
             .apply()
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_START -> {
@@ -100,6 +103,7 @@ class StepCounterService : Service(), SensorEventListener {
 
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     private fun vibrate(duration: Long = 100L) {
         if (vibrator.hasVibrator()) {
             val effect = VibrationEffect.createOneShot(duration, VibrationEffect.DEFAULT_AMPLITUDE)

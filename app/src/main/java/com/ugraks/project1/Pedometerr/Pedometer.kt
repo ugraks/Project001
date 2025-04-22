@@ -1,3 +1,5 @@
+package com.ugraks.project1 // Kendi paket adınız
+
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -16,46 +18,55 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.* // remember, mutableStateOf, LaunchedEffect, getValue, setValue, rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity // LocalDensity eklendi
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import androidx.hilt.navigation.compose.hiltViewModel // ViewModel için import
+import androidx.localbroadcastmanager.content.LocalBroadcastManager // BroadcastReceiver için
 import androidx.navigation.NavHostController
-import com.ugraks.project1.AppNavigation.Screens
-import com.ugraks.project1.Pedometerr.StepCounterService // StepCounterService ve diğer ilgili sınıfların projenizde tanımlı olduğunu varsayıyorum.
-import com.ugraks.project1.Pedometerr.saveDailyStepCount
+import com.ugraks.project1.AppNavigation.Screens // Navigasyon ekranları
+import com.ugraks.project1.Pedometerr.StepCounterService // StepCounterService sınıfınızın olduğu paket ve sınıf
+// Eski dosya kaydetme fonksiyonu artık GEREKMEZ: import com.ugraks.project1.Pedometerr.saveDailyStepCount
+import com.ugraks.project1.ui.viewmodels.PedometerViewModel // KENDİ PedometerViewModel'ınız
 
-@RequiresApi(Build.VERSION_CODES.O)
-@OptIn(ExperimentalMaterial3Api::class)
+@RequiresApi(Build.VERSION_CODES.O) // VibrationEffect.createOneShot ve LocalDate (eğer kullanılacaksa) için gerekebilir
+@OptIn(ExperimentalMaterial3Api::class) // Material 3 opt-in gerektiriyorsa
 @Composable
-fun StepCounterPage(navController: NavHostController) {
-
-
+fun StepCounterPage(
+    navController: NavHostController,
+    viewModel: PedometerViewModel = hiltViewModel() // YENİ: PedometerViewModel'ı Hilt ile inject et
+) {
     val context = LocalContext.current
-    val density = LocalDensity.current // Mevcut ekran yoğunluğunu al
+    val density = LocalDensity.current
     val scrollState = rememberScrollState()
     val vibrator = remember {
         context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
     }
+    // Shared Preferences hala UI state'ini (başladı mı, hedef nedir) saklamak için kullanılabilir
+    // Room bu UI state'ini yönetmek için değil, veriyi kalıcılaştırmak için kullanılır.
     val sharedPreferences = remember {
         context.getSharedPreferences("step_counter_prefs", Context.MODE_PRIVATE)
     }
 
-    // State'ler - Mantık aynı kalıyor
+    // State'ler - Mantık aynı kalıyor (Adım sayısı ve hedef UI state'i olarak burada tutulur)
+    // Not: Eğer servis adım sayısını Room'a yazıyorsa, adım sayısını da ViewModel'dan Flow ile almayı düşünebilirsiniz.
+    // Ancak mevcut kodunuzda BroadcastReceiver kullandığınız için bu şekilde kalması mantıklı.
     var stepCount by remember {
         mutableStateOf(
             sharedPreferences.getInt(
@@ -73,9 +84,9 @@ fun StepCounterPage(navController: NavHostController) {
         )
     }
     var targetStepCountInput by remember { mutableStateOf("") }
-    var targetStepCount by remember { mutableStateOf("") }
-    var goalReached by remember { mutableStateOf(false) }
-    var isSettingGoal by remember { mutableStateOf(true) }
+    var targetStepCount by remember { mutableStateOf("") } // Hedef adım sayısı UI state'i
+    var goalReached by remember { mutableStateOf(false) } // Hedefe ulaşıldı mı UI state'i
+    var isSettingGoal by remember { mutableStateOf(true) } // Hedef belirleniyor mu UI state'i
 
     val colorScheme = MaterialTheme.colorScheme
     val primaryColor = colorScheme.primary
@@ -87,7 +98,7 @@ fun StepCounterPage(navController: NavHostController) {
     val errorColor = colorScheme.error
     val successColor = Color.Green // Hedefe ulaşılınca yeşil renk
 
-    // BroadcastReceiver - Mantık aynı kalıyor
+    // BroadcastReceiver - Adım sayısını servisten alıp UI state'ini günceller (aynı kalır)
     val stepCountReceiver = remember {
         object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
@@ -122,7 +133,8 @@ fun StepCounterPage(navController: NavHostController) {
         }
     }
 
-    // Shared Preferences'tan kayıtlı verileri yükleme - Mantık aynı kalıyor
+    // Shared Preferences'tan kayıtlı hedef verilerini yükleme - Mantık aynı kalıyor
+    // Bu, UI state'ini dosya (SharedPrefs) üzerinden yeniden kurar.
     LaunchedEffect(Unit) {
         stepCount = sharedPreferences.getInt(StepCounterService.STEP_COUNT_KEY, 0)
         isStarted = sharedPreferences.getBoolean(StepCounterService.IS_STARTED_KEY, false)
@@ -135,38 +147,39 @@ fun StepCounterPage(navController: NavHostController) {
         }
     }
 
-    // İlerleme Yüzdesi Hesaplama ve Animasyon
+    // İlerleme Yüzdesi Hesaplama ve Animasyon aynı kalır
     val target = targetStepCount.toIntOrNull() ?: 0
     val progress = if (target > 0) minOf(stepCount.toFloat() / target, 1.0f) else 0.0f
     val animatedProgress by animateFloatAsState(
         targetValue = progress,
-        animationSpec = tween(
-            durationMillis = 1000,
-            delayMillis = 100
-        ) // Animasyon süresi ve gecikme eklendi
+        animationSpec = tween(durationMillis = 1000, delayMillis = 100),
+        label = "progressAnimation" // Animasyon label eklendi (önerilir)
     )
 
-    // Hedefe ulaşıldığında çubuk rengi animasyonu
+    // Hedefe ulaşıldığında çubuk rengi animasyonu aynı kalır
     val progressColor by animateColorAsState(
         targetValue = if (goalReached) successColor else primaryColor,
-        animationSpec = tween(durationMillis = 500)
+        animationSpec = tween(durationMillis = 500),
+        label = "progressColorAnimation" // Animasyon label eklendi
     )
-    // Hedefe ulaşıldığında adım sayısı rengi animasyonu
+    // Hedefe ulaşıldığında adım sayısı rengi animasyonu aynı kalır
     val stepCountColor by animateColorAsState(
-        targetValue = if (goalReached) successColor else onBackgroundColor, // Adım sayısını Card dışına taşıdık, rengini onBackground yapalım
-        animationSpec = tween(durationMillis = 500)
+        targetValue = if (goalReached) successColor else onBackgroundColor,
+        animationSpec = tween(durationMillis = 500),
+        label = "stepCountColorAnimation" // Animasyon label eklendi
     )
 
 
-    // Arka plan gradyanı
+    // Arka plan gradyanı aynı kalır
     val backgroundBrush = remember {
         Brush.linearGradient(
             colors = listOf(
                 colorScheme.primaryContainer,
                 colorScheme.secondaryContainer
-            ) // Temanın belirgin renklerini kullan
+            )
         )
     }
+
 
     Box(
         modifier = Modifier
@@ -184,7 +197,7 @@ fun StepCounterPage(navController: NavHostController) {
         ) {
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Başlık ve Geri Butonu
+            // Başlık ve Geri Butonu aynı kalır
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -210,7 +223,7 @@ fun StepCounterPage(navController: NavHostController) {
                 )
             }
 
-            // Hedef Belirleme veya Gösterim Alanı
+            // Hedef Belirleme veya Gösterim Alanı aynı kalır
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -243,8 +256,8 @@ fun StepCounterPage(navController: NavHostController) {
                                     unfocusedIndicatorColor = Color.Gray, // Daha nötr gri
                                     cursorColor = primaryColor
                                 ),
-                                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Number
                                 )
                             )
                             Button(
@@ -252,10 +265,13 @@ fun StepCounterPage(navController: NavHostController) {
                                     if (targetStepCountInput.isNotEmpty() && targetStepCountInput.toIntOrNull() != null && targetStepCountInput.toInt() > 0) { // Hedef 0'dan büyük olmalı kontrolü
                                         targetStepCount = targetStepCountInput
                                         isSettingGoal = false
+                                        // UI state'ini kalıcılaştırmak için SharedPrefs kullanılıyor
                                         sharedPreferences.edit()
                                             .putString("target_step_count", targetStepCount).apply()
                                         val targetVal = targetStepCount.toInt()
                                         goalReached = stepCount >= targetVal && targetVal > 0
+                                    } else {
+                                        Toast.makeText(context, "Please enter a valid target greater than 0.", Toast.LENGTH_SHORT).show()
                                     }
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = secondaryColor),
@@ -270,9 +286,9 @@ fun StepCounterPage(navController: NavHostController) {
                             horizontalArrangement = Arrangement.SpaceBetween,
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            // Hedef ikonu
+                            // Hedef ikonu aynı kalır
                             Icon(
-                                imageVector = Icons.Default.Star, // Yıldız ikonu
+                                imageVector = Icons.Default.Star,
                                 contentDescription = "Goal Icon",
                                 tint = primaryColor,
                                 modifier = Modifier.size(24.dp)
@@ -304,49 +320,49 @@ fun StepCounterPage(navController: NavHostController) {
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // *** ADIM SAYISI VE İLERLEME ÇUBUĞU ALANI - Geliştirilmiş ***
+            // *** ADIM SAYISI VE İLERLEME ÇUBUĞU ALANI aynı kalır ***
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .size(250.dp) // Çap daha da büyütüldü
                     .padding(16.dp) // Çevresine boşluk
             ) {
-                // Arka plan çemberi
+                // Arka plan çemberi aynı kalır
                 CircularProgressIndicator(
                     progress = 1f,
-                    strokeWidth = 16.dp, // Çubuk kalınlığı artırıldı
-                    color = colorScheme.surface, // Arka plan rengi surface
+                    strokeWidth = 16.dp,
+                    color = colorScheme.surface,
                     modifier = Modifier
                         .fillMaxSize()
                         .border(
                             2.dp,
                             colorScheme.onSurface.copy(alpha = 0.1f),
                             CircleShape
-                        ) // Hafif kenarlık
+                        )
                 )
 
-                // İlerleme çubuğu
+                // İlerleme çubuğu aynı kalır
                 CircularProgressIndicator(
                     progress = animatedProgress,
-                    strokeWidth = 16.dp, // Çubuk kalınlığı artırıldı
-                    color = progressColor, // Animasyonlu renk kullanıldı (Hedefe ulaşılınca yeşil olur)
+                    strokeWidth = 16.dp,
+                    color = progressColor,
                     modifier = Modifier.fillMaxSize(),
-                    strokeCap = StrokeCap.Round // Çubuk uçlarını yuvarlak yap
+                    strokeCap = StrokeCap.Round
                 )
 
-                // Adım sayısı ve hedef metinleri
+                // Adım sayısı ve hedef metinleri aynı kalır
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = "$stepCount",
-                        style = MaterialTheme.typography.displayMedium, // Boyut ayarlandı
-                        color = stepCountColor, // Animasyonlu renk kullanıldı (Hedefe ulaşılınca yeşil olur)
+                        style = MaterialTheme.typography.displayMedium,
+                        color = stepCountColor,
                         fontWeight = FontWeight.ExtraBold
                     )
                     if (target > 0) { // Hedef varsa göster
                         Text(
                             text = "out of $target",
-                            style = MaterialTheme.typography.titleMedium, // Boyut ayarlandı
-                            color = onBackgroundColor // Gradyan üzerinde iyi durması için onBackground
+                            style = MaterialTheme.typography.titleMedium,
+                            color = onBackgroundColor
                         )
                     }
                 }
@@ -361,6 +377,7 @@ fun StepCounterPage(navController: NavHostController) {
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(16.dp) // Butonlar arasına boşluk
             ) {
+                // Start/Stop Butonu aynı kalır (Servis ile etkileşimde)
                 Button(
                     onClick = {
                         isStarted = !isStarted
@@ -370,6 +387,8 @@ fun StepCounterPage(navController: NavHostController) {
                         } else {
                             serviceIntent.action = StepCounterService.ACTION_STOP
                         }
+                        // Build.VERSION.SDK_INT >= Build.VERSION_CODES.O kontrolü ile
+                        // startForegroundService kullanmak daha doğru olabilir production uygulamalarında
                         context.startService(serviceIntent)
                         vibrator.vibrate(
                             VibrationEffect.createOneShot(
@@ -392,25 +411,30 @@ fun StepCounterPage(navController: NavHostController) {
                     )
                 }
 
+                // Reset and Save Butonu - İŞLEM DEĞİŞTİ
                 Button(
                     onClick = {
-                        // *** BURASI DEĞİŞTİ - Adım sayısı 0 ise kontrolü eklendi ***
-                         if (stepCount == 0) {
-                            // Adım sayısı 0 ise Toast mesajı göster
+                        // Adım sayısı 0 ise kontrolü aynı kalır
+                        if (stepCount == 0) {
                             Toast.makeText(context, "No steps to save or reset.", Toast.LENGTH_SHORT).show()
                         } else {
-                            // Adım sayısı 0'dan büyükse mevcut işlemi yap
+                            val targetVal = targetStepCount.toIntOrNull() // Hedefi al (Int? tipinde)
+
+                            // YENİ: saveDailyStepCount yerine ViewModel metodunu çağır
+                            // Bu, mevcut adım sayısını, hedefi ve durumunu Room'a yeni bir giriş olarak ekler.
+                            viewModel.addStepEntry(
+                                steps = stepCount, // Mevcut adım sayısını gönder
+                                target = targetVal, // Hedef adım sayısını gönder (Int?)
+                                goalReached = goalReached // Hedefe ulaşılıp ulaşılmadığını gönder (Boolean)
+                            )
+                            // ESKİ: saveDailyStepCount(context = context, stepCount = stepCountSave, targetStep = target, goalReached = goalReached) kaldırıldı
+
+                            // Servise reset komutunu gönder (adım sayacını sıfırlar, bu kısım aynı kalır)
                             val serviceIntent = Intent(context, StepCounterService::class.java)
                             serviceIntent.action = StepCounterService.ACTION_RESET
-                            val target = targetStepCount.toIntOrNull()
-                            val stepCountSave = stepCount // Adım sayısını al
-                            saveDailyStepCount(
-                                context = context,
-                                stepCount = stepCountSave,
-                                targetStep = target,
-                                goalReached = goalReached
-                            )  // Günlük adım sayısını kaydet
                             context.startService(serviceIntent)
+
+                            // UI state'lerini sıfırla (bu kısım aynı kalır)
                             stepCount = 0
                             isStarted = false
                             goalReached = false
@@ -418,6 +442,8 @@ fun StepCounterPage(navController: NavHostController) {
                             targetStepCountInput = ""
                             isSettingGoal = true
                             sharedPreferences.edit().remove("target_step_count").apply()
+
+                            // Titreşim aynı kalır
                             vibrator.vibrate(
                                 VibrationEffect.createOneShot(
                                     200,
@@ -440,27 +466,29 @@ fun StepCounterPage(navController: NavHostController) {
                         fontWeight = FontWeight.Bold
                     )
                 }
+                // Show Daily Summary butonu aynı kalır
                 Button(
                     onClick = {
+                        // Navigasyon aynı kalır, DailySummaryPage artık PedometerViewModel kullanacak
                         navController.navigate(Screens.PedometerDailySummary)
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = colorScheme.surfaceVariant), // Farklı renk tonu
-                    shape = RoundedCornerShape(12.dp), // Yuvarlak köşeler
-                    modifier = Modifier.fillMaxWidth().height(56.dp) // Genişlik ve yükseklik ayarı
+                    colors = ButtonDefaults.buttonColors(containerColor = colorScheme.surfaceVariant),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth().height(56.dp)
                 ) {
                     Text(
                         "Show Daily Summary",
                         color = onBackgroundColor,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
-                    ) // Yazı rengi ve stili
+                    )
                 }
             }
 
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Hedefe Ulaşıldı Mesajı veya Diğer Bilgiler
+            // Hedefe Ulaşıldı Mesajı veya Diğer Bilgiler aynı kalır
             Box(
                 modifier = Modifier.fillMaxWidth(),
                 contentAlignment = Alignment.Center
@@ -468,27 +496,16 @@ fun StepCounterPage(navController: NavHostController) {
                 if (goalReached) {
                     Text(
                         text = "Goal Reached! Congratulations!",
-                        style = MaterialTheme.typography.headlineSmall, // Boyut ayarlandı
+                        style = MaterialTheme.typography.headlineSmall,
                         color = successColor,
                         fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Center,
                     )
                 } else {
-                    // Hedefe ulaşılmadıysa farklı bir mesaj veya boşluk
-                    // Spacer yüksekliğini MaterialTheme.typography.headlineSmall.fontSize'ı kullanarak hesaplayalım
-                    val headlineSmallLineHeight =
-                        with(density) { MaterialTheme.typography.headlineSmall.fontSize.toDp() * 1.5f } // Yaklaşık satır yüksekliği
-                    Spacer(modifier = Modifier.height(headlineSmallLineHeight)) // Yer tutması için
+                    val headlineSmallLineHeight = with(density) { MaterialTheme.typography.headlineSmall.fontSize.toDp() * 1.5f }
+                    Spacer(modifier = Modifier.height(headlineSmallLineHeight))
                 }
             }
-
-
-            // Alt kısımda kalan boşluğu doldurmak için Spacer(Modifier.weight(1f)) eklenebilir,
-            // ancak bu durumda tüm üstteki öğeler yukarı sıkışır. Mevcut padding ve boşluklarla
-            // orta alana odaklanmak daha iyi olabilir.
-            // Eğer ekran çok büyükse ve altı boş kalıyorsa weight kullanışlı olabilir.
-            // Spacer(modifier = Modifier.weight(1f))
         } // Ana Column sonu
     }
-
 }

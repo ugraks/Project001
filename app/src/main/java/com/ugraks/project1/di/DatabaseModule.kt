@@ -9,6 +9,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext // Application Context 
 import dagger.hilt.components.SingletonComponent // Uygulama yaşam döngüsü boyunca geçerli olacak bileşen
 import com.ugraks.project1.data.local.AppDatabase // Database sınıfını import edin
 import com.ugraks.project1.data.local.dao.CalorieRecordDao // DAO'ları import edin
+import com.ugraks.project1.data.local.dao.DailyStepDao
 import com.ugraks.project1.data.local.dao.DailySummaryDao
 import javax.inject.Singleton // Tek örnek olacağını belirtir
 
@@ -28,6 +29,7 @@ object DatabaseModule { // object -> Singleton olmasını sağlar
             // Eğer veritabanı versiyonu ileride artarsa migrasyon eklemelisiniz.
             // Migrasyon eklemeyecekseniz ve yapı değişiminde verinin silinip yeniden oluşturulmasını kabul ediyorsanız:
             // .fallbackToDestructiveMigration() // Bu senaryoda veri kaybı önemli değilse kullanılabilir
+            .fallbackToDestructiveMigration()
             .build()
     }
 
@@ -41,6 +43,11 @@ object DatabaseModule { // object -> Singleton olmasını sağlar
     @Provides
     fun provideDailySummaryDao(db: AppDatabase): DailySummaryDao {
         return db.dailySummaryDao() // Database örneğinden DAO'yu alır
+    }
+
+    @Provides // Yeni metot
+    fun provideDailyStepDao(db: AppDatabase): DailyStepDao {
+        return db.dailyStepDao() // Database örneğinden yeni DAO'yu sağlar
     }
 
     // Eğer FoodItem'ları asset'ten okuyan kodu Room'a taşımadıysanız ve ViewModel'da Context kullanmak istemiyorsanız,

@@ -1,10 +1,9 @@
-package com.ugraks.project1.Pedometerr
+package com.ugraks.project1.Pedometerr // Kendi paket adınız
 
 import android.content.Context
-import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.items // items yerine itemsIndexed de kullanabilirsiniz
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -20,120 +19,47 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.runtime.*
+import androidx.compose.runtime.* // remember, mutableStateOf, collectAsState, getValue, setValue, rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel // ViewModel için import
 import androidx.navigation.NavController
-import java.io.File
-import java.io.IOException // IOException eklendi
-import java.lang.NumberFormatException
+import com.ugraks.project1.data.local.entity.DailyStepEntity // YENİ Room Entity
+import com.ugraks.project1.ui.viewmodels.PedometerViewModel // YENİ ViewModel'ınız
+import kotlinx.coroutines.launch // Coroutine başlatmak için
+import java.time.LocalDate // Gerekirse
+import java.util.Date // Gerekirse SimpleDateFormat için
+import java.text.SimpleDateFormat // Gerekirse zaman damgasını formatlamak için
+import java.util.Locale // Gerekirse SimpleDateFormat için
+import kotlin.math.roundToInt // Gerekirse
 
-// Dosyada kullanılan ayırıcı (saveDailyStepCount.kt ile eşleşmeli)
-private const val ENTRY_DELIMITER = " | "
-private const val DATE_FORMAT = "yyyy-MM-dd"
-
-// Her bir kaydedilmiş adım sayımı detayını tutacak veri sınıfı
-data class DailyStepEntryDetail(
-    val steps: Int,
-    val target: Int?,
-    val status: String,
-    // Silme için bu detayın orijinal string temsilini sakla
-    val originalDetailString: String // "adım, Target: hedef, Success: durum" gibi
-)
+// Eski dosya okuma fonksiyonları ve data class'ı Room Entity'sine taşındığı için artık burada GEREKMEZ.
+// private const val ENTRY_DELIMITER = " | " // Kaldırıldı
+// private const val DATE_FORMAT = "yyyy-MM-dd" // Kaldırıldı
+// data class DailyStepEntryDetail(...) // Kaldırıldı
+// fun loadDailySummaries(...) // Kaldırıldı
+// fun deleteEntry(...) // Kaldırıldı
+// fun clearAllSummaries(...) // Kaldırıldı
 
 @Composable
-fun DailySummaryPage(navController: NavController) {
-    val context = LocalContext.current
-    // Veriyi güne göre gruplandırmak için Map kullanıyoruz: Map<TarihStringi, List<DailyStepEntryDetail>>
-    val dailySummaries = remember { mutableStateMapOf<String, MutableList<DailyStepEntryDetail>>() }
+fun DailySummaryPage(
+    navController: NavController,
+    viewModel: PedometerViewModel = hiltViewModel() // YENİ: PedometerViewModel'ı inject et
+) {
+    val context = LocalContext.current // Toast vb. için (eğer kullanılacaksa)
+    val coroutineScope = rememberCoroutineScope() // Dialoglarda suspend fonksiyonu çağırmak için
+
+    // summaries listesi artık ViewModel'dan Room'dan gelen Flow<Map<String, List<DailyStepEntity>>>'i izleyecek
+    val dailySummariesMap by viewModel.dailyStepSummariesByDate.collectAsState() // YENİ: Room'dan gelen ve gruplanmış adım verisi (Map<String, List<DailyStepEntity>>)
+
     var showDeleteAllDialog by remember { mutableStateOf(false) }
-    // Silinecek öğe için Pair<TarihStringi, OriginalDetailString> saklayalım
-    var entryToDelete by remember { mutableStateOf<Pair<String, Pair<Int, String>>?>(null) }
+    // Silinecek öğe için DailyStepEntity saklayalım
+    var entryToDelete by remember { mutableStateOf<DailyStepEntity?>(null) } // Tipi DailyStepEntity oldu
 
-
-    // Verileri yükleme ve gruplandırma
-    fun loadDailySummaries() {
-        val file = File(context.filesDir, "daily_steps.txt")
-        dailySummaries.clear() // Önce mevcut veriyi temizle
-
-        if (!file.exists()) {
-            Log.d("DailySummaryPage", "Daily steps file not found.")
-            return
-        }
-
-        val lines = try {
-            file.readLines()
-        } catch (e: IOException) {
-            Log.e("DailySummaryPage", "Error reading summaries file: ${e.message}")
-            return // Dosya okuma hatası varsa yükleme
-        }
-
-
-        lines.forEach { line ->
-            // Boş veya sadece boşluklardan oluşan satırları atla
-            if (line.isBlank()) {
-                Log.d("DailySummaryPage", "Skipping blank line.")
-                return@forEach
-            }
-
-            // Böl: Tarih:Data
-            val dateAndData = line.split(":", limit = 2)
-            if (dateAndData.size != 2) {
-                Log.w("DailySummaryPage", "Skipping malformed line (date/data): $line")
-                return@forEach
-            }
-
-            val date = dateAndData[0].trim()
-            val dataPart = dateAndData[1].trim()
-
-            // Böl: Ayrı kaydedilmiş detaylar (ENTRY_DELIMITER ile ayrılmış)
-            val rawEntriesForDay = dataPart.split(ENTRY_DELIMITER)
-
-            val parsedEntriesForDay = mutableListOf<DailyStepEntryDetail>()
-            rawEntriesForDay.forEach { entryString ->
-                val trimmedEntryString = entryString.trim() // Ayrıştırmadan önce trimle
-                val parts = trimmedEntryString.split(",", limit = 3).map { it.trim() }
-
-                if (parts.isNotEmpty()) { // Adım sayısı kısmı (ilk kısım) mevcut olmalı
-                    val stepsString = parts[0]
-                    val steps = try {
-                        stepsString.toInt()
-                    } catch (e: NumberFormatException) {
-                        Log.e("DailySummaryPage", "Invalid step count format: $stepsString in entry: $trimmedEntryString", e)
-                        0 // Hata durumunda varsayılan olarak 0
-                    }
-
-                    val target = parts.getOrNull(1)?.removePrefix("Target:")?.trim()?.toIntOrNull()
-                    val status = parts.getOrNull(2)?.removePrefix("Success:")?.trim() ?: "Unknown"
-
-                    // Detay nesnesini, orijinal detay stringini de dahil ederek oluştur
-                    val detail = DailyStepEntryDetail(steps, target, status, trimmedEntryString)
-
-                    parsedEntriesForDay.add(detail)
-                } else {
-                    Log.w("DailySummaryPage", "Skipping empty or malformed entry detail string after split: $trimmedEntryString in line: $line")
-                }
-            }
-
-            // Gruplandırma için Map'e ekle
-            if (parsedEntriesForDay.isNotEmpty()) {
-                // toMutableStateList() kullanarak bu listedeki öğe ekleme/çıkarma/güncelleme durumlarını Composable'ın gözlemlemesini sağla
-                dailySummaries[date] = parsedEntriesForDay.toMutableStateList()
-            } else {
-                Log.w("DailySummaryPage", "No valid entries found for date $date in line: $line")
-            }
-        }
-        Log.d("DailySummaryPage", "Loaded ${dailySummaries.size} unique dates.")
-    }
-
-    // Sayfa ilk yüklendiğinde verileri yükle
-    LaunchedEffect(Unit) {
-        loadDailySummaries()
-    }
 
     // Ana Sayfa
     Column(
@@ -141,51 +67,52 @@ fun DailySummaryPage(navController: NavController) {
             .fillMaxSize()
             .padding(horizontal = 16.dp)
     ) {
-        // Geri Butonu ve Başlık
+        // Geri Butonu ve Başlık aynı kalır
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 24.dp, bottom = 24.dp)
         ) {
+            // Geri Butonu
             IconButton(
                 onClick = { navController.popBackStack() },
                 modifier = Modifier.align(Alignment.CenterStart)
             ) {
-                androidx.compose.material3.Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack, // İki yönlü ok ikonunu kullanmak daha doğru olabilir
                     contentDescription = "Back",
-                    tint = MaterialTheme.colorScheme.primary
+                    tint = MaterialTheme.colorScheme.primary // Veya onBackground
                 )
             }
 
+            // Başlık (ortalanmış)
             Text(
-                "Daily Summary",
+                text = "Daily Step Summaries", // Başlığı netleştirdik
                 style = MaterialTheme.typography.headlineMedium.copy(
-                    color = MaterialTheme.colorScheme.primary,
+                    color = MaterialTheme.colorScheme.primary, // Veya onBackground
                     fontWeight = FontWeight.Bold
                 ),
                 modifier = Modifier.align(Alignment.Center)
             )
         }
 
-        // Liste Alanı - LazyColumn
-        // Liste Alanı - LazyColumn
+        // Liste Alanı - LazyColumn (Room'dan gelen dailySummariesMap kullanılır)
         LazyColumn(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth(),
             contentPadding = PaddingValues(vertical = 8.dp)
         ) {
-            // *** SIRALAMA BURADA YAPILDI ***
-            // Tarih key'ine (String) göre azalan sırada (yeni tarihten eskiye) sırala
+            // Map entry'lerini tarihe göre sırala ve listele
+            // ViewModel'daki ORDER BY date DESC, timestamp DESC sayesinde zaten sıralı gelecektir.
             items(
-                items = dailySummaries.entries.toList().sortedByDescending { it.key }, // Entry'leri tarihe göre azalan sırada sırala
+                items = dailySummariesMap.entries.toList().sortedByDescending { it.key }, // Map entry'leri (date, List<DailyStepEntity>)
                 key = { it.key } // Her gün için benzersiz anahtar (tarih stringi)
-            ) { (date, entriesForDay) ->
+            ) { (date, entriesForDay) -> // date String, entriesForDay List<DailyStepEntity>
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 8.dp),
+                        .padding(vertical = 8.dp), // Kartlar arasına dikey boşluk
                     shape = RoundedCornerShape(8.dp),
                     elevation = CardDefaults.cardElevation(4.dp)
                 ) {
@@ -195,15 +122,16 @@ fun DailySummaryPage(navController: NavController) {
                     ) {
                         // Tarih
                         Text(
-                            text = date,
-                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                            text = date, // Tarih stringi Map key'inden geliyor
+                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.primary // Veya başka bir renk
                         )
 
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        // O güne ait her bir kaydı listele - BURADA DEĞİŞTİ (forEachIndexed)
-                        entriesForDay.forEachIndexed { index, entryDetail -> // <-- index alındı
-                            // İlk kayıt hariç diğerlerinden önce ayırıcı ekle
+                        // O güne ait her bir kaydı listele - entriesForDay Room Entity listesidir
+                        entriesForDay.forEachIndexed { index, entryEntity -> // entryEntity DailyStepEntity
+                            // Ayirici ekle
                             if (index > 0) {
                                 Divider(
                                     modifier = Modifier.padding(vertical = 8.dp),
@@ -217,13 +145,13 @@ fun DailySummaryPage(navController: NavController) {
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
-                                    // Adımlar
+                                    // entryEntity.steps kullanın
                                     Text(
-                                        text = "Steps: ${entryDetail.steps}",
+                                        text = "Steps: ${entryEntity.steps}",
                                         style = MaterialTheme.typography.bodyMedium
                                     )
-                                    // Hedef adım sayısı varsa
-                                    entryDetail.target?.let { target ->
+                                    // entryEntity.target kullanın
+                                    entryEntity.target?.let { target ->
                                         Text(
                                             text = "Target: $target",
                                             style = MaterialTheme.typography.bodyMedium
@@ -232,28 +160,32 @@ fun DailySummaryPage(navController: NavController) {
                                         text = "Target: Unknown",
                                         style = MaterialTheme.typography.bodyMedium
                                     )
-                                    // Başarı durumu
+                                    // entryEntity.status kullanın
                                     Text(
-                                        text = when (entryDetail.status) {
+                                        text = when (entryEntity.status) {
                                             "Successful" -> "Status: ✅ Goal Achieved!"
                                             "Unsuccessful" -> "Status: ❌ Goal Not Achieved"
                                             else -> "Status: Unknown"
                                         },
-                                        color = when (entryDetail.status) {
+                                        color = when (entryEntity.status) {
                                             "Successful" -> Color(0xFF2E7D32) // Yeşil
                                             "Unsuccessful" -> Color.Red
                                             else -> Color.Gray
                                         },
                                         style = MaterialTheme.typography.bodyMedium
                                     )
+                                    // (Opsiyonel) Zaman damgasını göstermek isterseniz:
+                                    // val timeString = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(entryEntity.timestamp))
+                                    // Text("Time: $timeString", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
 
-                                // Silme ikonu - Tıklanınca index ve string kaydediliyor - BURADA DEĞİŞTİ
+                                // Silme ikonu - İŞLEM DEĞİŞTİ
                                 IconButton(
                                     onClick = {
-                                        // Silinecek öğe için tarihi, indeksi ve orijinal detay stringini sakla
-                                        entryToDelete = Pair(date, Pair(index, entryDetail.originalDetailString)) // <-- index de eklendi
-                                        Log.d("DailySummaryPage", "Prepare to delete entry at index $index for date $date with content: ${entryDetail.originalDetailString}")
+                                        // Silinecek öğe Room Entity'sidir
+                                        entryToDelete = entryEntity // YENİ: Silinecek entity'yi state'e kaydet
+                                        // Dialogu göstermek için bir state (showDeleteConfirmationDialog gibi) kullanmanız gerekebilir.
+                                        // Şu an direkt dialog içinde olduğunuz için sadece state'i set etmek yeterli.
                                     }
                                 ) {
                                     Icon(
@@ -266,22 +198,22 @@ fun DailySummaryPage(navController: NavController) {
                             }
                         }
 
-                        // Toplam adım sayısını hesapla
+                        // Toplam adım sayısını hesapla (aynı kalır, sadece list tipi DailyStepEntity oldu)
                         val totalStepsForDay = entriesForDay.sumOf { it.steps }
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        // Toplam Adım Sayısı
+                        // Toplam Adım Sayısı (aynı kalır)
                         Text(
                             text = "Total Steps for $date: $totalStepsForDay",
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.primary
+                            color = MaterialTheme.colorScheme.primary // Veya başka bir renk
                         )
                     }
                 }
             }
-            // Eğer hiç özet yoksa bilgi mesajı göster
-            if (dailySummaries.isEmpty()) {
+            // Eğer hiç özet yoksa bilgi mesajı göster (aynı kalır, map boşsa çalışır)
+            if (dailySummariesMap.isEmpty()) {
                 item {
                     Box(
                         modifier = Modifier.fillParentMaxSize(),
@@ -297,10 +229,9 @@ fun DailySummaryPage(navController: NavController) {
             }
         }
 
-
-        // Clear All Button - Alt kısımda sabit
+        // Clear All Button - İŞLEM DEĞİŞTİ
         Button(
-            onClick = { showDeleteAllDialog = true },
+            onClick = { showDeleteAllDialog = true }, // Dialog gösterme state'ini set et
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 16.dp),
@@ -310,48 +241,29 @@ fun DailySummaryPage(navController: NavController) {
             ),
             shape = RoundedCornerShape(8.dp)
         ) {
-            Text("Clear All Summaries")
+            Text("Clear All Summaries") // Metin aynı kalır
         }
 
 
-        // Bireysel silme dialog
-        // Bireysel silme dialog - BURADA DEĞİŞTİ
-        if (entryToDelete != null) {
+        // Bireysel silme dialog - İŞLEM DEĞİŞTİ
+        // showDeleteConfirmationDialog gibi bir state tarafından kontrol edilmesi daha uygun olabilir
+        // Ancak current implementasyonda sadece entryToDelete != null ise dialog görünüyor.
+        if (entryToDelete != null) { // entryToDelete DailyStepEntity tipinde
             AlertDialog(
-                onDismissRequest = { entryToDelete = null },
+                onDismissRequest = { entryToDelete = null }, // Dialog dışına tıklayınca kapat
                 title = { Text("Delete Entry", color = MaterialTheme.colorScheme.primary) },
                 text = { Text("Are you sure you want to delete this specific saved entry?") },
                 confirmButton = {
                     TextButton(onClick = {
-                        val (dateKey, indexAndDetail) = entryToDelete!!
-                        val (indexToRemove, originalDetailString) = indexAndDetail // indeksi ve stringi al
-
-                        // Dosyadan silme fonksiyonunu indeksle çağır - BURADA DEĞİŞTİ
-                        deleteEntry(context, dateKey, indexToRemove) // <-- İndeks gönderiliyor
-
-                        // State'ten de kaldır (artık indeksi biliyoruz) - BURADA DEĞİŞTİ
-                        val entriesForDay = dailySummaries[dateKey]
-                        if (entriesForDay != null && indexToRemove >= 0 && indexToRemove < entriesForDay.size) {
-                            // Belirtilen indeksteki öğeyi state listesinden kaldır
-                            val removedDetail = entriesForDay.removeAt(indexToRemove) // <-- İndekse göre kaldır
-                            Log.d("DailySummaryPage", "Removed item from state at index $indexToRemove for date $dateKey. Content: ${removedDetail.originalDetailString}")
-
-                            // Eğer bu tarih için State listesinde hiç giriş kalmadıysa, tarihi map'ten kaldır
-                            if (entriesForDay.isEmpty()) {
-                                dailySummaries.remove(dateKey)
-                                Log.d("DailySummaryPage", "Removed date key $dateKey from state as it's now empty.")
+                        entryToDelete?.let { entry -> // Room Entity'yi al
+                            // YENİ: ViewModel üzerinden Room'dan sil
+                            coroutineScope.launch { // suspend fonksiyonu CoroutineScope içinde çağır
+                                viewModel.deleteStepEntry(entry)
                             }
-
-                        } else {
-                            // Bu hata durumu, eğer state ile dosya arasında ciddi bir tutarsızlık olursa oluşabilir.
-                            // Bu durumda veriyi yeniden yüklemek iyi bir çözüm olabilir
-                            Log.w("DailySummaryPage", "Attempted to remove item from state at invalid index $indexToRemove for date $dateKey. State list size: ${entriesForDay?.size}")
-                            loadDailySummaries() // State bozuksa dosyadan tekrar yükle
+                            // ESKİ: deleteEntry(...) ve state güncelleme kaldırıldı
+                            // Room Flow'u güncelleyecek ve UI otomatik değişecek.
                         }
-
                         entryToDelete = null // Dialogu kapat
-                        Log.d("DailySummaryPage", "Confirmed deletion attempt for entry at index $indexToRemove for date $dateKey. UI state updated.")
-
                     }) {
                         Text("Yes", color = MaterialTheme.colorScheme.primary)
                     }
@@ -364,18 +276,21 @@ fun DailySummaryPage(navController: NavController) {
             )
         }
 
-        // Tümünü temizleme dialog
-        if (showDeleteAllDialog) {
+        // Tümünü temizleme dialog - İŞLEM DEĞİŞTİ
+        if (showDeleteAllDialog) { // showDeleteAllDialog state'i tarafından kontrol edilir
             AlertDialog(
-                onDismissRequest = { showDeleteAllDialog = false },
+                onDismissRequest = { showDeleteAllDialog = false }, // Dialog dışına tıklayınca kapat
                 title = { Text("Clear All Entries", color = MaterialTheme.colorScheme.primary) },
                 text = { Text("Are you sure you want to delete all daily summaries?") },
                 confirmButton = {
                     TextButton(onClick = {
-                        clearAllSummaries(context)
-                        dailySummaries.clear()
-                        showDeleteAllDialog = false
-                        Log.d("DailySummaryPage", "Confirmed clearing all summaries.")
+                        // YENİ: ViewModel üzerinden Room'dan tüm girişleri sil
+                        coroutineScope.launch { // suspend fonksiyonu CoroutineScope içinde çağır
+                            viewModel.clearAllStepEntries()
+                        }
+                        // ESKİ: clearAllSummaries(context) ve dailySummaries.clear() çağrıları kaldırıldı
+                        // Room Flow'u güncelleyecek ve UI otomatik değişecek.
+                        showDeleteAllDialog = false // Dialogu kapat
                     }) {
                         Text("Yes", color = MaterialTheme.colorScheme.primary)
                     }

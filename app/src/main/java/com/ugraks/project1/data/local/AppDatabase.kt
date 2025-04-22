@@ -1,23 +1,26 @@
-package com.ugraks.project1.data.local
+package com.ugraks.project1.data.local // Kendi paket adınız
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
-import com.ugraks.project1.data.local.dao.CalorieRecordDao // DAO'ları import edin
+import com.ugraks.project1.data.local.dao.CalorieRecordDao
 import com.ugraks.project1.data.local.dao.DailySummaryDao
-import com.ugraks.project1.data.local.entity.CalorieRecordEntity // Entity'leri import edin
+import com.ugraks.project1.data.local.dao.DailyStepDao // Yeni DAO'yu import edin
+import com.ugraks.project1.data.local.entity.CalorieRecordEntity
 import com.ugraks.project1.data.local.entity.DailySummaryEntity
+import com.ugraks.project1.data.local.entity.DailyStepEntity // Yeni Entity'yi import edin
 
-// Veritabanı sınıfı
 @Database(
-    entities = [CalorieRecordEntity::class, DailySummaryEntity::class], // Veritabanındaki tüm Entity'leri listele
-    version = 1, // Veritabanı şeması değiştiğinde bu versiyon numarasını artırın
-    exportSchema = false // Şema dosyalarını dışa aktarmak isterseniz true yapın (versiyonlama ve migrasyon için önerilir)
+    // Yeni Entity'yi entities listesine ekleyin
+    entities = [CalorieRecordEntity::class, DailySummaryEntity::class, DailyStepEntity::class],
+    version = 2, // VERİTABANI VERSİYONUNU ARTIRIN!
+    exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
-    // DAO'lara erişim için soyut metodlar tanımlayın
     abstract fun calorieRecordDao(): CalorieRecordDao
     abstract fun dailySummaryDao(): DailySummaryDao
+    abstract fun dailyStepDao(): DailyStepDao // Yeni DAO için abstract metot ekleyin
 
-    // Genellikle burada Singleton companion object deseni oluşturulur,
-    // ancak Hilt kullanacağımız için Hilt modülü veritabanı örneğini sağlayacaktır.
+    // Eğer versiyonu artırdıysanız ama migrasyon yazmak istemiyorsanız (ve veri kaybı sorun değilse):
+    // .fallbackToDestructiveMigration() çağrısını Room.databaseBuilder'a eklemeyi düşünebilirsiniz (Adım 5'te).
+    // Ancak en doğru yol migrasyon yazmaktır. Boş başlangıçta sorun olmaz ama dikkatli olun.
 }

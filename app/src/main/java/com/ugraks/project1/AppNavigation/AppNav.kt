@@ -1,6 +1,5 @@
 package com.ugraks.project1.AppNavigation
 
-import StepCounterPage
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
@@ -31,7 +30,7 @@ import com.ugraks.project1.Fitness.loadExercisesFromAssets
 import com.ugraks.project1.KeepNoteComposable.DailySummariesPage
 import com.ugraks.project1.Pedometerr.DailySummaryPage
 import androidx.navigation.NavHostController
-
+import com.ugraks.project1.StepCounterPage
 
 
 @RequiresApi(Build.VERSION_CODES.O)

@@ -77,6 +77,7 @@ dependencies {
     implementation ("androidx.drawerlayout:drawerlayout:1.2.0")
     implementation ("io.coil-kt:coil-compose:2.2.2")
     implementation ("androidx.appcompat:appcompat:1.6.1")
+    implementation("com.google.code.gson:gson:2.10.1")
     // Room
     ksp(libs.room.compiler)
     implementation(libs.room.runtime)

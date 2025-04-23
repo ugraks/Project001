@@ -1,124 +1,120 @@
-package com.ugraks.project1.Recipes
+package com.ugraks.project1.Recipes // Kendi paket adınız
 
-import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
-import androidx.navigation.NavController
-import com.ugraks.project1.R
-
-// getRecipeImageResource fonksiyonunu import ettiğinizden emin olun
-// Eğer getRecipeImageResource fonksiyonu ImageMapping.kt dosyasında ise, import satırı şu şekilde olabilir:
-// import com.ugraks.project1.utils.getRecipeImageResource
+import androidx.activity.compose.BackHandler // Geri tuşu yakalama
+import androidx.compose.foundation.Image // Resim gösterme
+import androidx.compose.foundation.background // Arka plan rengi
+import androidx.compose.foundation.border // Kenarlık
+import androidx.compose.foundation.layout.* // Layout bileşenleri (Column, Row, Box vb.)
+import androidx.compose.foundation.rememberScrollState // Kaydırma state'i
+import androidx.compose.foundation.shape.RoundedCornerShape // Köşe yuvarlama şekli
+import androidx.compose.foundation.verticalScroll // Dikey kaydırma
+import androidx.compose.material.icons.Icons // İkon kütüphanesi
+import androidx.compose.material.icons.automirrored.filled.ArrowBack // Geri oku ikonu
+import androidx.compose.material3.* // Material 3 bileşenleri (Card, Text, Icon, IconButton vb.)
+import androidx.compose.runtime.* // remember, getValue, collectAsState, LaunchedEffect
+import androidx.compose.ui.Alignment // Hizalama
+import androidx.compose.ui.Modifier // Modifier
+import androidx.compose.ui.draw.clip // Kırpma (şekle göre)
+import androidx.compose.ui.draw.shadow // Gölge
+import androidx.compose.ui.layout.ContentScale // Resim ölçeklendirme
+import androidx.compose.ui.platform.LocalContext // Context alma
+import androidx.compose.ui.res.painterResource // Drawable kaynaktan resim yükleme
+import androidx.compose.ui.text.font.FontFamily // Yazı tipi ailesi
+import androidx.compose.ui.text.font.FontWeight // Yazı tipi kalınlığı
+import androidx.compose.ui.text.style.TextOverflow // Metin taşması
+import androidx.compose.ui.unit.dp // dp birimi
+import androidx.compose.ui.unit.sp // sp birimi
+import androidx.compose.ui.zIndex // Z-index (üstte görünme)
+import androidx.hilt.navigation.compose.hiltViewModel // ViewModel için import
+import androidx.navigation.NavController // Navigasyon kontrolcüsü
+import com.ugraks.project1.R // Drawable kaynaklarına erişim için R sınıfı
+import com.ugraks.project1.data.local.entity.RecipeEntity // YENİ Room Entity importu
+import com.ugraks.project1.ui.viewmodel.RecipeViewModel
+// Eğer getRecipeImageResource başka bir dosyada ise import edin
+// import com.ugraks.project1.utils.getRecipeImageResource // Kendi utils paketiniz importu
 
 
 @Composable
-fun RecipeDetailScreen(recipeName: String, navController: NavController) {
-    val context = LocalContext.current
-    // readRecipesFromAssets fonksiyonu Recipe nesnelerine imageResId eklemek zorunda değildir artık
-    val allRecipes = remember { readRecipesFromAssets(context) }
-    // Tarif nesnesini sadece detaylarını (malzemeler, talimatlar) göstermek için adına göre buluyoruz
-    val recipe = allRecipes.find { it.name == recipeName }
+fun RecipeDetailScreen(
+    recipeName: String, // Navigasyondan gelen tarif adı parametresi
+    navController: NavController, // Navigasyon kontrolcüsü parametresi
+    viewModel: RecipeViewModel = hiltViewModel() // YENİ: RecipeViewModel'ı Hilt ile inject et
+) {
+    val context = LocalContext.current // Gerekirse
 
-    val colorScheme = MaterialTheme.colorScheme
-    val titleFontFamily = FontFamily.Serif
-    val contentFontFamily = FontFamily.SansSerif
+    // Tarif detayını ViewModel'dan Room'dan reaktif olarak al
+    // recipeName parametresi değiştiğinde (navigasyonla yeni tarif detayına gidilince)
+    // remember(recipeName) bloku yeniden çalışır ve yeni tarif için Flow toplanır.
+    val recipeEntity by remember(recipeName) { // recipeName değiştiğinde Flow yeniden toplanır
+        viewModel.getRecipeDetail(recipeName) // ViewModel'dan belirli tarifi getiren metodu çağır
+    }.collectAsState(initial = null) // Flow'u state olarak topla, başlangıç değeri null (veri yüklenene kadar)
 
 
+    val colorScheme = MaterialTheme.colorScheme // Tema renk şeması
+    val titleFontFamily = FontFamily.Serif // Başlıklar için yazı tipi
+    val contentFontFamily = FontFamily.SansSerif // İçerik için yazı tipi
+
+    // Görsel kaynağı hala tarif adına göre belirleniyor (aynı kalır, Room'a taşınmaz)
     val imageResource = getRecipeImageResource(recipeName = recipeName)
 
 
-    Box(
+    Box( // Ana Box, tüm ekranı kaplar
         modifier = Modifier
-            .fillMaxSize()
-            .background(colorScheme.background)
-            .statusBarsPadding()
-            .navigationBarsPadding()
+            .fillMaxSize() // Tam ekran
+            .background(colorScheme.background) // Arka plan rengi
+            .statusBarsPadding() // Durum çubuğu boşluğu
+            .navigationBarsPadding() // Navigasyon çubuğu boşluğu
     ) {
-        // Geri butonu
+        // Geri butonu - Üstte ve solda sabit durur
         IconButton(
-            onClick = { navController.popBackStack() },
+            onClick = { navController.popBackStack() }, // Geri gitme aksiyonu
             modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(start = 10.dp, top = 10.dp)
-                .zIndex(1f) // Üstte görünmesini sağlar
+                .align(Alignment.TopStart) // Üst sola hizala
+                .padding(start = 10.dp, top = 10.dp) // Padding
+                .zIndex(1f) // Z-index ile diğer bileşenlerin üstünde görünmesini sağla
         ) {
-            androidx.compose.material3.Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack, // Ok yönü dil/layout yönüne göre otomatik ayarlanır
-                contentDescription = "Go Back",
-                tint = colorScheme.primary,
-                modifier = Modifier.size(28.dp)
+            Icon( // Material 3 Icon kullanın
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack, // Otomatik yönlü geri oku
+                contentDescription = "Go Back", // Erişilebilirlik
+                tint = colorScheme.primary, // Renk
+                modifier = Modifier.size(28.dp) // Boyut
             )
         }
 
-        // Card yapısı + içeriği (Scroll edilebilir Column içinde)
+        // Ana İçerik - Kaydırılabilir Column içinde
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState()), // İçeriğin kaydırılabilir olmasını sağlar
-            horizontalAlignment = Alignment.CenterHorizontally
+                .fillMaxSize() // Tam boyut
+                .verticalScroll(rememberScrollState()), // Dikey kaydırmayı etkinleştir
+            horizontalAlignment = Alignment.CenterHorizontally // İçindeki öğeleri yatayda ortala
         ) {
-            Spacer(modifier = Modifier.height(80.dp)) // Görsel ve üst boşluk için yer
+            Spacer(modifier = Modifier.height(80.dp)) // Görsel ve üst boşluk için yer bırak
 
+            // Card ve Görselin bulunduğu Box
             Box(
-                contentAlignment = Alignment.TopCenter, // Görseli Card'ın üst orta kısmına yerleştirir
+                contentAlignment = Alignment.TopCenter, // İçeriği (Görseli) üst ortaya hizala
                 modifier = Modifier
-                    .fillMaxWidth() // Box'ın genişliği Card ile aynı olsun
-                    .padding(horizontal = 16.dp) // Yatayda boşluk bırak
+                    .fillMaxWidth() // Box'ın genişliği tam
+                    .padding(horizontal = 16.dp) // Yatayda padding
             ) {
                 // Ana İçerik Kartı
                 Card(
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(16.dp), // Köşe yuvarlama
                     colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceVariant), // Kart rengi
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 60.dp) // Görselin Kartın üzerine binmesi için üstten boşluk bırak
+                        .fillMaxWidth() // Tam genişlik
+                        .padding(top = 60.dp) // Görselin kartın üzerine binmesi için üstten boşluk
                 ) {
-                    Column(
+                    Column( // Kartın içindeki Column
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(16.dp) // Kartın iç padding'i
                     ) {
                         Spacer(modifier = Modifier.height(60.dp)) // Görselin altında da boşluk bırak
 
-                        // Yemek ismi (Ortalanmış)
+                        // Yemek ismi (Ortalanmış) - recipe?.name yerine recipeEntity?.name kullanın
                         Text(
-                            text = recipe?.name ?: "Tarif Bulunamadı", // Eğer recipe null ise bu metin gösterilir
+                            text = recipeEntity?.name ?: "Tarif Yükleniyor/Bulunamadı", // YENİ: recipeEntity?.name kullanılır (null ise placeholder)
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = titleFontFamily,
@@ -130,9 +126,9 @@ fun RecipeDetailScreen(recipeName: String, navController: NavController) {
                             overflow = TextOverflow.Ellipsis // Taşarsa üç nokta göster
                         )
 
-                        // Malzemeler Başlığı
+                        // Malzemeler Başlığı aynı kalır
                         Text(
-                            text = "Malzemeler:",
+                            text = "Ingredients",
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 20.sp,
                             color = colorScheme.primary,
@@ -143,67 +139,86 @@ fun RecipeDetailScreen(recipeName: String, navController: NavController) {
                         Spacer(modifier = Modifier.height(4.dp))
 
                         // Malzemeler Listesi (Her bir malzeme için ayrı Text)
-                        // Eğer recipe null ise veya ingredients listesi boşsa hiçbir şey gösterilmez
-                        recipe?.ingredients?.forEach { ingredient ->
+                        // YENİ DÜZELTME: Delegated property hatasını çözmek için malzemeler listesini güvenli kontrol et
+                        // recipeEntity null ise ingredientsList de null olur
+                        val ingredientsList = recipeEntity?.ingredients // Güvenli çağrı ile malzemeler listesini al (List<String>?)
+
+                        if (ingredientsList.isNullOrEmpty()) { // isNullOrEmpty() hem null listeyi hem de boş listeyi kontrol eder
                             Text(
-                                text = "• $ingredient", // Madde işareti ekle
+                                text = "No ingredient information found.",
                                 fontSize = 16.sp,
                                 fontFamily = contentFontFamily,
-                                color = colorScheme.onSurface,
-                                modifier = Modifier.padding(start = 8.dp, top = 2.dp), // Sol ve üst boşluk
-                                lineHeight = 22.sp // Satır aralığı
+                                color = colorScheme.onSurface.copy(alpha = 0.7f),
+                                modifier = Modifier.padding(start = 8.dp, top = 2.dp)
                             )
+                        } else {
+                            // Liste null değilse ve boş değilse, döngüyü çalıştırın
+                            ingredientsList.forEach { ingredient -> // ingredientsList artık List<String>
+                                Text(
+                                    text = "• $ingredient", // Madde işareti ekle
+                                    fontSize = 16.sp,
+                                    fontFamily = contentFontFamily,
+                                    color = colorScheme.onSurface,
+                                    modifier = Modifier.padding(start = 8.dp, top = 2.dp),
+                                    lineHeight = 22.sp
+                                )
+                            }
                         }
+
 
                         Spacer(modifier = Modifier.height(24.dp)) // Malzemeler ve Talimatlar arasına boşluk
 
-                        // Talimatlar Başlığı
+                        // Talimatlar Başlığı aynı kalır
                         Text(
-                            text = "Talimatlar:",
+                            text = "Instructions",
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 20.sp,
                             color = colorScheme.primary,
                             fontFamily = titleFontFamily
                         )
 
-                        // Talimatlar Metni
-                        // Eğer recipe null ise veya instructions boşsa bu metin gösterilir
+                        // Talimatlar Metni - recipe?.instructions yerine recipeEntity?.instructions kullanın
                         Text(
-                            text = recipe?.instructions ?: "Talimat bulunamadı.",
+                            text = recipeEntity?.instructions ?: "No instruction information found.", // YENİ: recipeEntity?.instructions kullanılır (güvenli çağrı)
                             fontSize = 16.sp,
                             fontFamily = contentFontFamily,
                             color = colorScheme.onSurface,
-                            modifier = Modifier.padding(top = 8.dp), // Üstüne boşluk
-                            lineHeight = 24.sp // Satır aralığı
+                            modifier = Modifier.padding(top = 8.dp),
+                            lineHeight = 24.sp
                         )
 
                         // Buraya yorumlar, besin değerleri gibi ek bilgiler eklenebilir
-                    }
-                }
+                    } // İç Column sonu
+                } // Card sonu
 
-                // Resim (Card'ın üzerine biner şekilde)
+                // Resim (Card'ın üzerine biner şekilde) - aynı kalır
                 Image(
-                    // --- GÖRSEL SEÇİMİ İÇİN YAPILAN DEĞİŞİKLİK BURADA ---
                     // getRecipeImageResource fonksiyonundan gelen görsel ID'sini kullan
                     painter = painterResource(id = imageResource),
-                    // --- DEĞİŞİKLİK SONU ---
-                    contentDescription = recipe?.name ?: "Tarif Görseli", // Erişilebilirlik için görsel açıklaması
+                    contentDescription = recipeEntity?.name ?: "Tarif Görseli", // recipeEntity?.name kullanılır (Erişilebilirlik için güvenli çağrı)
                     modifier = Modifier
-                        .size(120.dp) // Görsel boyutu
-                        .clip(RoundedCornerShape(16.dp)) // Köşeleri yuvarla
-                        .border(2.dp, colorScheme.primary, RoundedCornerShape(16.dp)) // Kenarlık ekle
-                        .shadow(4.dp, RoundedCornerShape(16.dp)), // Hafif gölge ekle
-                    contentScale = ContentScale.Crop // Görseli boyutuna sığdırmak için kırp
+                        .size(120.dp) // Boyut
+                        .clip(RoundedCornerShape(16.dp)) // Köşe yuvarlama
+                        .border(2.dp, colorScheme.primary, RoundedCornerShape(16.dp)) // Kenarlık
+                        .shadow(4.dp, RoundedCornerShape(16.dp)), // Gölge
+                    contentScale = ContentScale.Crop // Ölçeklendirme
                 )
-            }
+            } // Box sonu
 
             Spacer(modifier = Modifier.height(24.dp)) // En alt boşluk
-        }
-    }
+        } // Ana Column sonu
 
-    // Geri tuşuna basıldığında önceki ekrana dönme
+        // Eğer recipeEntity hala null ise (yükleniyor veya bulunamadı) Yükleniyor göstergesi gösterebilirsiniz
+        // recipeName boş gelirse (navigasyon hatası?) veya gerçekten bulunamazsa recipeEntity null kalabilir.
+        if (recipeEntity == null && recipeName.isNotEmpty()) { // recipeName boş değilse ve recipeEntity null ise yükleniyor/bulunamadı demektir
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = colorScheme.primary) // Yükleniyor göstergesi
+            }
+        }
+    } // Ana Box sonu
+
+    // Geri tuşuna basıldığında önceki ekrana dönme aynı kalır
     BackHandler {
         navController.popBackStack()
     }
 }
-

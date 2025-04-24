@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import com.ugraks.project1.R
+import com.ugraks.project1.data.local.entity.FoodItemEntity
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.util.Locale
@@ -47,7 +48,7 @@ fun readAndParseItemsFromAssets(context: Context): List<FoodItem> {
     return foodItems
 }
 
-fun calculateNutritionalValues(item: FoodItem, quantity: Int, isKg: Boolean, isLiters: Boolean): NutritionalValues {
+fun calculateNutritionalValues(item: FoodItemEntity, quantity: Int, isKg: Boolean, isLiters: Boolean): NutritionalValues {
     val quantityInBaseUnits = when {
         item.type == "Food" -> if (isKg) quantity * 1000.0 else quantity.toDouble()
         item.type == "Drink" -> if (isLiters) quantity * 1000.0 else quantity.toDouble()

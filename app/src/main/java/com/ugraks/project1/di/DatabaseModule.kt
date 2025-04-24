@@ -8,6 +8,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext // Application Context sağlamak için
 import dagger.hilt.components.SingletonComponent // Uygulama yaşam döngüsü boyunca geçerli olacak bileşen
 import com.ugraks.project1.data.local.AppDatabase // Database sınıfını import edin
+import com.ugraks.project1.data.local.dao.BoxingItemDao
 import com.ugraks.project1.data.local.dao.CalorieRecordDao // DAO'ları import edin
 import com.ugraks.project1.data.local.dao.DailyStepDao
 import com.ugraks.project1.data.local.dao.DailySummaryDao
@@ -84,6 +85,12 @@ object DatabaseModule { // object -> Singleton olmasını sağlar
     @Singleton // <-- Singleton olarak sağlayın
     fun provideExerciseDao(db: AppDatabase): ExerciseDao {
         return db.exerciseDao() // Database örneğinden yeni DAO'yu sağlar
+    }
+
+    @Provides // <-- YENİ METOT
+    @Singleton // <-- Singleton olarak sağlayın
+    fun provideBoxingItemDao(db: AppDatabase): BoxingItemDao {
+        return db.boxingItemDao() // Database örneğinden yeni DAO'yu sağlar
     }
 
     // Eğer FoodItem'ları asset'ten okuyan kodu Room'a taşımadıysanız ve ViewModel'da Context kullanmak istemiyorsanız,

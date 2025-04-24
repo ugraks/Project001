@@ -1,7 +1,6 @@
-package com.ugraks.project1.Boxing
+package com.ugraks.project1.Boxing // Kendi paket adınız
 
-
-import android.content.Context
+import android.content.Context // Artık Context parametresi Composable'a gerek YOK
 import android.widget.Toast
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,34 +24,51 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState // StateFlow'u izlemek için
+import androidx.compose.runtime.getValue // State değerini almak için
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext // Toast mesajı için
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel // ViewModel'ı inject etmek için
 import androidx.navigation.NavController
-// Import the new BoxingItem and loadBoxingDataFromAssets
-// Make sure your navigation routes are defined correctly, e.g., in Screens object
-import com.ugraks.project1.AppNavigation.Screens // Assuming you have a Screens object for navigation
+import com.ugraks.project1.AppNavigation.Screens // Navigasyon ekranları
+// Asset okuma importları Composable'da gerek YOK
+// import com.ugraks.project1.Boxing.BoxingItem
+// import com.ugraks.project1.Boxing.loadBoxingDataFromAssets
+import com.ugraks.project1.ui.viewmodels.BoxingViewModel // YENİ: BoxingViewModel importu
+
 
 @Composable
-fun BoxingMainScreen(navController: NavController, context: Context) {
-    // Load boxing items using the new function
-    val boxingItems = loadBoxingDataFromAssets(context)
-    // Extract distinct categories from boxing items
-    val boxingCategories = boxingItems.map { it.category }.distinct()
-    // State to hold selected categories
+fun BoxingMainScreen(
+    navController: NavController,
+    // Context parametresi kaldırıldı, ViewModel inject edilecek
+    viewModel: BoxingViewModel = hiltViewModel() // YENİ: ViewModel inject et
+) {
+    val context = LocalContext.current // Toast mesajı için Context
+
+    // Boks öğeleri ve kategoriler artık ViewModel'dan geliyor
+    // val boxingItems = loadBoxingDataFromAssets(context) // Bu satır kaldırıldı
+    // val boxingCategories = boxingItems.map { it.category }.distinct() // Bu satır kaldırıldı
+
+    // ViewModel'dan boks kategorilerini StateFlow olarak izle
+    val boxingCategories by viewModel.boxingCategories.collectAsState() // YENİ: ViewModel'dan al
+
+    // Kullanıcı tarafından seçilen boks kategorilerini Composable state'inde tut
     val selectedBoxingCategories = remember { mutableStateListOf<String>() }
+
 
     Box(modifier = Modifier.fillMaxSize()) {
 
-        // 🔙 Back Button (Consider if this is needed on the main screen)
+        // 🔙 Geri Butonu
         IconButton(
-            onClick = { navController.navigateUp() }, // This might exit the app or go to a previous screen
+            onClick = { navController.navigateUp() },
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(top = 40.dp, start = 20.dp)
@@ -65,7 +81,7 @@ fun BoxingMainScreen(navController: NavController, context: Context) {
             )
         }
 
-        // Main Content
+        // Ana İçerik
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -73,11 +89,11 @@ fun BoxingMainScreen(navController: NavController, context: Context) {
                 .align(Alignment.TopCenter),
             horizontalAlignment = Alignment.Start
         ) {
-            Spacer(modifier = Modifier.height(120.dp)) // Space between title and back button
+            Spacer(modifier = Modifier.height(120.dp)) // başlıkla geri butonu arasında boşluk
 
-            // Title
+            // Başlık
             Text(
-                text = "Select Boxing Categories", // Changed title
+                text = "Select Boxing Categories",
                 style = MaterialTheme.typography.titleMedium.copy(
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold,
@@ -90,8 +106,9 @@ fun BoxingMainScreen(navController: NavController, context: Context) {
                 textAlign = TextAlign.Center
             )
 
-            // Checkbox List for Boxing Categories
-            boxingCategories.forEach { category -> // Iterate through boxing categories
+            // Checkbox Listesi (ViewModel'dan gelen boxingCategories listesini kullanır)
+            // Eğer boxingCategories boşsa (ViewModel henüz yüklemediyse), boş liste gösterilir
+            boxingCategories.forEach { category -> // YENİ: ViewModel'dan gelen listeyi kullan
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -106,6 +123,8 @@ fun BoxingMainScreen(navController: NavController, context: Context) {
                             } else {
                                 selectedBoxingCategories.remove(category)
                             }
+                            // Seçim değiştiğinde ViewModel'a bildirme artık GEREK YOK
+                            // NavArgs ile bilgiyi taşıyoruz
                         },
                         colors = CheckboxDefaults.colors(
                             checkedColor = MaterialTheme.colorScheme.primary,
@@ -128,14 +147,13 @@ fun BoxingMainScreen(navController: NavController, context: Context) {
             Button(
                 onClick = {
                     if (selectedBoxingCategories.isNotEmpty()) {
-                        // Navigate to the detail list screen with selected categories
-                        // Make sure your route creation function is correctly defined in Screens
-                        val route = Screens.BoxingDetailListScreen.createRoute( // Updated screen name
-                            selectedBoxingCategories.joinToString(",")
+                        // Navigasyona giderken seçili kategorileri NavArgs olarak string formatında ilet
+                        // ViewModel'a selectedCategories'i set etme artık GEREK YOK
+                        val route = Screens.BoxingDetailListScreen.createRoute(
+                            selectedBoxingCategories.joinToString(",") // NavArgs olarak string gönder
                         )
                         navController.navigate(route)
                     } else {
-                        // Changed Toast message
                         Toast.makeText(
                             context,
                             "Please select at least one boxing category",
@@ -152,7 +170,7 @@ fun BoxingMainScreen(navController: NavController, context: Context) {
                 )
             ) {
                 Text(
-                    text = "Show Boxing Items", // Changed button text
+                    text = "Show Boxing Items",
                     style = MaterialTheme.typography.bodyLarge.copy(
                         color = MaterialTheme.colorScheme.onPrimary,
                         fontFamily = FontFamily.SansSerif
@@ -162,3 +180,13 @@ fun BoxingMainScreen(navController: NavController, context: Context) {
         }
     }
 }
+
+// loadBoxingDataFromAssets fonksiyonu bu dosyadan kaldırıldı, Repository tarafından kullanılacak
+/*
+fun loadBoxingDataFromAssets(context: Context): List<BoxingItem> {
+    // ... fonksiyon içeriği ...
+}
+*/
+
+// BoxingItem data class'ı bu dosyadan kaldırıldı, kendi dosyasında (Boxing.kt) tanımlı
+// data class BoxingItem(...)

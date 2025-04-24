@@ -138,26 +138,35 @@ fun SayfaGecisleri(navController: NavHostController) {
 
         }
 
-        composable(Screens.BoxingMainScreen.route) {
-            BoxingMainScreen(navController = navController, context = context) // Boks ana ekranı
+        composable(Screens.BoxingMainScreen.route) { backStackEntry ->
+            BoxingMainScreen(navController = navController) // BoxingMainScreen Composable'ını çağır
         }
 
         composable(
-            route = Screens.BoxingDetailListScreen.route, // Rota tanımı
-            arguments = listOf(navArgument("selectedCategories") { type = NavType.StringType }) // Argüman tanımı
-        ) { backStackEntry ->
-            // Argümanı al ve listeye dönüştür
-            val selectedCategoriesString = backStackEntry.arguments?.getString("selectedCategories") ?: ""
-            val selectedCategoriesList = selectedCategoriesString.split(",").filter { it.isNotBlank() }
+            route = Screens.BoxingDetailListScreen.route, // Bu route "boxing_detail_list_screen/{selectedCategoriesString}" gibi olmalı
+            arguments = listOf( // Route'tan beklenen argümanları tanımlarız
+                navArgument("selectedCategoriesString") { // Argümanın adı (route placeholder'ı ile aynı)
+                    type = NavType.StringType // Argümanın tipi String
+                    nullable = true // Argüman null olabilir mi? (Genellikle false yapın eğer hep gönderilecekse)
+                    defaultValue = "" // Argüman null veya eksikse kullanılacak varsayılan değer
+                }
+            )
+        ) { backStackEntry -> // backStackEntry, route'dan gelen argümanlara erişmemizi sağlar
+            // NavBackStackEntry'den "selectedCategoriesString" argümanını String olarak alıyoruz
+            val selectedCategoriesString = backStackEntry.arguments?.getString("selectedCategoriesString")
 
-            // Boks verisini burada yükle (Mevcut ExerciseListScreen örneği gibi)
-            val allBoxingItems = loadBoxingDataFromAssets(context)
+            // Koma ile ayrılmış String'i List<String>'e dönüştürüyoruz
+            // Eğer string null veya boşsa boş bir liste döndürürüz
+            val selectedCategories = selectedCategoriesString
+                ?.split(",") // Koma ile ayır
+                ?.filter { it.isNotEmpty() } // Boş stringleri temizle
+                ?: emptyList() // Eğer string null veya boşsa boş liste
 
-            // Boks detay listesi ekranını çağır
+            // BoxingDetailListScreen Composable'ını çağırırken parametreleri iletiyoruz:
             BoxingDetailListScreen(
-                navController = navController,
-                selectedCategories = selectedCategoriesList,
-                allBoxingItems = allBoxingItems // Yüklenen veriyi ekrana ilet
+                navController = navController, // NavController'ı ilet
+                selectedCategories = selectedCategories // Parsed (dönüştürülmüş) List<String>'i ilet
+                // BoxingViewModel Hilt tarafından otomatik olarak inject edilecek (hiltViewModel())
             )
         }
 

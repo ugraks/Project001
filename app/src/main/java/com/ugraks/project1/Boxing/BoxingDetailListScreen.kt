@@ -1,5 +1,4 @@
-package com.ugraks.project1.Boxing
-
+package com.ugraks.project1.Boxing // Kendi paket adınız
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
@@ -24,34 +23,47 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState // StateFlow'u izlemek için
+import androidx.compose.runtime.getValue // State değerini almak için
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-// Import the new BoxingItem, loadBoxingDataFromAssets, and getBoxingImageResource
+// Boks öğesi data class'ı yerine Entity kullanılacak
+// import com.ugraks.project1.Boxing.BoxingItem
+// import com.ugraks.project1.Boxing.loadBoxingDataFromAssets // Artık Composable'da kullanılmıyor
+import com.ugraks.project1.Boxing.getBoxingImageResource // Image resource fonksiyonu hala burada veya Utils dosyasında olabilir
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel // ViewModel'ı inject etmek için
 import androidx.navigation.NavController
-// Make sure your navigation routes are defined correctly, e.g., in Screens object
-import com.ugraks.project1.R // Assuming R is accessible
+import com.ugraks.project1.R // R sınıfını import edin
+import com.ugraks.project1.data.local.entity.BoxingItemEntity // YENİ: BoxingItemEntity importu
+import com.ugraks.project1.ui.viewmodels.BoxingViewModel // YENİ: BoxingViewModel importu
+
 
 @Composable
 fun BoxingDetailListScreen(
     navController: NavController,
-
-    selectedCategories: List<String>,
-
-    allBoxingItems: List<BoxingItem>
+    selectedCategories: List<String>, // Başlık için hala parametre olarak gelebilir (NavArgs'tan)
+    // Boks öğeleri listesi artık ViewModel'dan gelecek, parametre kaldırıldı
+    // allBoxingItems: List<BoxingItem> // Bu parametre kaldırıldı
+    viewModel: BoxingViewModel = hiltViewModel() // YENİ: ViewModel inject et
 ) {
-    // Filter boxing items based on the selected categories
-    val filteredBoxingItems = allBoxingItems.filter { it.category in selectedCategories }
-    // State to track the expanded item
-    val expandedItem = remember { mutableStateOf<BoxingItem?>(null) }
+    // Boks öğeleri listesi artık ViewModel'dan geliyor ve ViewModel'da filtreleniyor
+    // val filteredBoxingItems = allBoxingItems.filter { it.category in selectedCategories } // Bu satır kaldırıldı
+
+    // ViewModel'dan filtrelenmiş boks öğeleri listesini StateFlow olarak izle
+    val filteredBoxingItems by viewModel.filteredBoxingItems.collectAsState() // YENİ: ViewModel'dan al
+
+    // Genişletilmiş öğe state'i (UI state'i olarak kalır, tipi BoxingItemEntity olacak)
+    val expandedItem = remember { mutableStateOf<BoxingItemEntity?>(null) } // YENİ: Tipi BoxingItemEntity?
+
 
     Box(modifier = Modifier.fillMaxSize()) {
 
@@ -77,9 +89,9 @@ fun BoxingDetailListScreen(
                 .padding(top = 90.dp) // Space for back button and title
         ) {
 
-            // 🏷 Title
+            // 🏷 Title (Parametreden gelen kategorileri kullanır)
             Text(
-                text = "${selectedCategories.joinToString(", ")}", // Changed title
+                text = "${selectedCategories.joinToString(", ")}",
                 style = MaterialTheme.typography.titleMedium.copy(
                     fontFamily = FontFamily.SansSerif,
                     fontSize = 26.sp,
@@ -89,29 +101,30 @@ fun BoxingDetailListScreen(
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 24.dp) // Space between title and cards
+                    .padding(bottom = 24.dp)
             )
 
-            // 📋 Boxing Item Cards
+            // 📋 Boxing Item Cards (ViewModel'dan gelen filteredBoxingItems listesini kullanır)
+            // Liste boşsa (ViewModel henüz yüklemediyse veya filtre sonucu boşsa) boş liste gösterilir
             LazyColumn(
                 contentPadding = PaddingValues(bottom = 80.dp)
             ) {
-                itemsIndexed(filteredBoxingItems) { _, item -> // Iterate through filtered boxing items
+                // itemsIndexed ViewModel'dan gelen filteredBoxingItems listesini kullanır (List<BoxingItemEntity>)
+                itemsIndexed(filteredBoxingItems, key = { _, item -> item.name }) { _, item -> // item artık BoxingItemEntity tipinde
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 12.dp) // Space between cards
+                            .padding(vertical = 12.dp)
                             .clickable {
-                                // Toggle expanded state
                                 expandedItem.value = if (expandedItem.value == item) null else item
                             },
-                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp), // Card shadow
-                        shape = RoundedCornerShape(16.dp) // Rounded corners
+                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                        shape = RoundedCornerShape(16.dp)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            // Boxing Item Name
+                            // Boxing Item Name (item.name - BoxingItemEntity'de mevcut)
                             Text(
-                                text = item.name, // Display item name
+                                text = item.name, // YENİ: BoxingItemEntity'den adı al
                                 style = MaterialTheme.typography.titleMedium.copy(
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 20.sp,
@@ -123,14 +136,13 @@ fun BoxingDetailListScreen(
                                     .align(Alignment.CenterHorizontally)
                             )
 
-                            // Image or Icon
-                            // Use the new getBoxingImageResource function
+                            // Image or Icon (item.name - BoxingItemEntity'de mevcut)
                             val currentImageResource = if (expandedItem.value == item) {
-                                // If card is expanded, try to get specific image
-                                getBoxingImageResource(item.name) // Use item.name
+                                // Kart açıksa, öğeye özel resmi al
+                                getBoxingImageResource(item.name) // item.name hala String
                             } else {
-                                // If card is collapsed, show default icon
-                                R.drawable.baseline_sports_martial_arts_24 // Still using placeholder icon
+                                // Kart kapalıysa, varsayılan ikonunu göster
+                                R.drawable.baseline_sports_martial_arts_24 // Sizin varsayılan ikonunuz
                             }
 
                             Image(
@@ -141,29 +153,30 @@ fun BoxingDetailListScreen(
                                     .height(200.dp)
                                     .padding(bottom = 12.dp)
                                     .clip(RoundedCornerShape(16.dp)),
-                                // contentScale = ContentScale.Crop // Optional: Scale type
+                                // contentScale = ContentScale.Crop
                             )
 
-                            // Boxing Item Details (Animated Visibility)
+                            // Boxing Item Details (Animated Visibility) (BoxingItemEntity'den alınır)
+                            // AnimatedVisibility'nin visible kontrolü hala BoxingItemEntity tipini kullanır
                             AnimatedVisibility(visible = expandedItem.value == item) {
                                 Column {
-                                    // Display Category
+                                    // category (item.category - BoxingItemEntity'de mevcut)
                                     Text(
-                                        text = "Category: ${item.category}", // Display category
+                                        text = "Category: ${item.category}", // YENİ: BoxingItemEntity'den al
                                         style = MaterialTheme.typography.bodyMedium.copy(
                                             color = MaterialTheme.colorScheme.onBackground
                                         ),
                                         modifier = Modifier.padding(bottom = 8.dp)
                                     )
-                                    // Display Description
+                                    // description (item.description - BoxingItemEntity'de mevcut)
                                     Text(
-                                        text = "Description: ${item.description}", // Display description
+                                        text = "Description: ${item.description}", // YENİ: BoxingItemEntity'den al
                                         style = MaterialTheme.typography.bodyMedium.copy(
                                             color = MaterialTheme.colorScheme.onBackground
                                         ),
                                         modifier = Modifier.padding(bottom = 8.dp)
                                     )
-                                    // Display Details / How-to
+                                    // details (item.details - BoxingItemEntity'de mevcut)
                                     Text(
                                         text = "Details:", // Changed label
                                         style = MaterialTheme.typography.bodyMedium.copy(
@@ -172,9 +185,8 @@ fun BoxingDetailListScreen(
                                         modifier = Modifier.padding(bottom = 8.dp)
                                     )
 
-                                    // Display details, potentially split by a delimiter if needed
-                                    // Assuming details might contain multiple steps/points
-                                    item.details.split(" | ").forEach { step -> // Assuming | is still the delimiter
+                                    // details, potansiyel olarak ayırıcı ile bölünmüşse
+                                    item.details.split(" | ").forEach { step -> // YENİ: BoxingItemEntity'den al, | ayırıcı varsayıldı
                                         Text(
                                             text = step.trim(),
                                             style = MaterialTheme.typography.bodyMedium.copy(
@@ -183,16 +195,25 @@ fun BoxingDetailListScreen(
                                             modifier = Modifier.padding(bottom = 4.dp)
                                         )
                                     }
-                                    // Or if details is just one block of text:
-                                    // Text(
-                                    //     text = item.details,
-                                    //     style = MaterialTheme.typography.bodyMedium.copy(
-                                    //         color = MaterialTheme.colorScheme.onBackground
-                                    //     ),
-                                    //     modifier = Modifier.padding(bottom = 4.dp)
-                                    // )
                                 }
                             }
+                        }
+                    }
+                }
+                // Liste boşsa bilgi mesajı göster
+                item {
+                    if (filteredBoxingItems.isEmpty()) {
+                        Box(
+                            modifier = Modifier.fillParentMaxSize(), // LazyColumn içinde tam alanı kapla
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                "No boxing items found for selected categories.",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(16.dp)
+                            )
                         }
                     }
                 }
@@ -200,3 +221,9 @@ fun BoxingDetailListScreen(
         }
     }
 }
+
+// getBoxingImageResource fonksiyonu bu dosyadan kaldırılmadı, hala burada veya ayrı bir Utils dosyasında olabilir.
+// fun getBoxingImageResource(itemName: String): Int { ... }
+
+// BoxingItem data class'ı bu dosyadan kaldırıldı, kendi dosyasında (Boxing.kt) tanımlı
+// data class BoxingItem(...)

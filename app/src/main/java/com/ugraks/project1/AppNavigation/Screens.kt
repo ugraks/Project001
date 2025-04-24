@@ -61,10 +61,16 @@ sealed class Screens(val route : String) {
 
 
     @Serializable
-    object BoxingMainScreen : Screens("boxingMainScreen")
+    object BoxingMainScreen : Screens("boxing_main_screen")
     @Serializable
-    object BoxingDetailListScreen : Screens("boxingDetailListScreen/{selectedCategories}") {
-        fun createRoute(selectedCategories: String) = "boxingDetailListScreen/$selectedCategories"}
+    object BoxingDetailListScreen : Screens("boxing_detail_list_screen/{selectedCategoriesString}") { // <-- Argüman placeholder'ı
+        // Navigasyon için route'u argümanla birlikte oluşturan yardımcı fonksiyon
+        fun createRoute(selectedCategoriesString: String): String {
+            // Argüman string'ini URL encode etmek, özel karakterler sorun yaratmasın diye iyi bir fikirdir.
+            val encodedString = Uri.encode(selectedCategoriesString)
+            return "boxing_detail_list_screen/$encodedString"
+        }
+    }
 
 
 

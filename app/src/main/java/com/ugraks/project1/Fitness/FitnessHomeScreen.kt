@@ -1,6 +1,6 @@
-package com.ugraks.project1.Fitness
+package com.ugraks.project1.Fitness // Kendi paket adınız
 
-import android.content.Context
+import android.content.Context // Artık Context parametresi Composable'a gerek YOK
 import android.widget.Toast
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,26 +24,46 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState // StateFlow'u izlemek için
+import androidx.compose.runtime.getValue // State değerini almak için
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext // Toast mesajı için
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel // ViewModel'ı inject etmek için
 import androidx.navigation.NavController
 import com.ugraks.project1.AppNavigation.Screens
-import java.io.BufferedReader
-import java.io.InputStreamReader
+// Asset okuma importu artık Composable'da gerek YOK
+// import java.io.BufferedReader
+// import java.io.InputStreamReader
+import com.ugraks.project1.ui.viewmodels.FitnessViewModel // YENİ: FitnessViewModel importu
 
 
 @Composable
-fun MainScreen(navController: NavController, context: Context) {
-    val exercises = loadExercisesFromAssets(context)
-    val muscleGroups = exercises.map { it.muscleGroup }.distinct()
+fun MainScreen(
+    navController: NavController,
+    viewModel: FitnessViewModel = hiltViewModel() // YENİ: ViewModel inject et
+) {
+    val context = LocalContext.current // Toast mesajı için Context
+
+    // Egzersiz listesi ve kas grupları artık ViewModel'dan geliyor
+    // val exercises = loadExercisesFromAssets(context) // Bu satır kaldırıldı
+    // val muscleGroups = exercises.map { it.muscleGroup }.distinct() // Bu satır kaldırıldı
+
+    // ViewModel'dan kas gruplarını StateFlow olarak izle
+    val muscleGroups by viewModel.muscleGroups.collectAsState() // YENİ: ViewModel'dan al
+
+    // Kullanıcı tarafından seçilen kas gruplarını Composable state'inde tut
+    // ViewModel'daki selectedMuscleGroups state'ini de kullanabiliriz,
+    // ancak basit bir seçim listesi için UI'da tutmak da uygundur.
     val selectedMuscleGroups = remember { mutableStateListOf<String>() }
+
 
     Box(modifier = Modifier.fillMaxSize()) {
 
@@ -87,8 +107,9 @@ fun MainScreen(navController: NavController, context: Context) {
                 textAlign = TextAlign.Center
             )
 
-            // Checkbox Listesi
-            muscleGroups.forEach { muscleGroup ->
+            // Checkbox Listesi (ViewModel'dan gelen muscleGroups listesini kullanır)
+            // Eğer muscleGroups boşsa (ViewModel henüz yüklemediyse), boş liste gösterilir
+            muscleGroups.forEach { muscleGroup -> // YENİ: ViewModel'dan gelen listeyi kullan
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -103,6 +124,8 @@ fun MainScreen(navController: NavController, context: Context) {
                             } else {
                                 selectedMuscleGroups.remove(muscleGroup)
                             }
+                            // Seçim değiştiğinde ViewModel'a bildirebiliriz (isteğe bağlı,
+                            // navigasyondan önce toplu bildirme de yapılabilir)
                         },
                         colors = CheckboxDefaults.colors(
                             checkedColor = MaterialTheme.colorScheme.primary,
@@ -125,6 +148,10 @@ fun MainScreen(navController: NavController, context: Context) {
             Button(
                 onClick = {
                     if (selectedMuscleGroups.isNotEmpty()) {
+                        // Seçilen grupları ViewModel'a bildirme satırı kaldırıldı
+                        // viewModel.setSelectedMuscleGroups(selectedMuscleGroups.toList()) // <-- BU SATIRI SİLİN
+
+                        // Navigasyon (muscleGroupsString'i NavArgs olarak iletir)
                         val route = Screens.ExerciseListScreen.createRoute(
                             selectedMuscleGroups.joinToString(",")
                         )
@@ -157,3 +184,13 @@ fun MainScreen(navController: NavController, context: Context) {
     }
 }
 
+// loadExercisesFromAssets fonksiyonu artık MainScreen'de değil, Repository veya ViewModel'da olmalı
+// Bu fonksiyon MainScreen.kt dosyasından kaldırıldı
+/*
+fun loadExercisesFromAssets(context: Context): List<Exercise> {
+    // ... fonksiyon içeriği ...
+}
+*/
+
+// Exercise data class'ı bu dosyadan kaldırıldı, kendi dosyasında (Exercise.kt) tanımlı
+// data class Exercise(...)

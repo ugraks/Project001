@@ -89,16 +89,37 @@ fun SayfaGecisleri(navController: NavHostController) {
 
 
         composable(Screens.MainScreen.route) {
-            MainScreen(navController = navController, context = context)
+            MainScreen(navController = navController)
         }
 
-        composable(Screens.ExerciseListScreen.route) { backStackEntry ->
-            val muscleGroupsParam = backStackEntry.arguments?.getString("muscleGroups") ?: ""
-            val muscleGroups = muscleGroupsParam.split(",")
+
+
+        composable(
+
+            route = Screens.ExerciseListScreen.route,
+            arguments = listOf(
+                navArgument("muscleGroupsString") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = ""
+                }
+            )
+        ) { backStackEntry ->
+
+            val muscleGroupsString = backStackEntry.arguments?.getString("muscleGroupsString")
+
+            // Koma ile ayrılmış String'i List<String>'e dönüştürüyoruz
+            // Eğer string null veya boşsa boş bir liste döndürürüz
+            val muscleGroups = muscleGroupsString
+                ?.split(",") // Koma ile ayır
+                ?.filter { it.isNotEmpty() } // Boş stringleri temizle (örneğin sonunda fazladan virgül varsa)
+                ?: emptyList() // Eğer muscleGroupsString null ise boş liste ver
+
+            // ExerciseListScreen Composable'ını çağırırken parametreleri iletiyoruz:
             ExerciseListScreen(
-                navController = navController,
-                muscleGroups = muscleGroups,
-                exercises = loadExercisesFromAssets(context)
+                navController = navController, // NavController'ı ilet
+                muscleGroups = muscleGroups // Parsed (dönüştürülmüş) List<String>'i ilet
+
             )
         }
 

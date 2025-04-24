@@ -1,6 +1,8 @@
 package com.ugraks.project1.di
 
 import com.ugraks.project1.data.local.repository.CalorieRepositoryImpl
+import com.ugraks.project1.data.local.repository.FitnessRepository
+import com.ugraks.project1.data.local.repository.FitnessRepositoryImpl
 import com.ugraks.project1.data.local.repository.FoodItemRepository
 import com.ugraks.project1.data.local.repository.FoodItemRepositoryImpl
 import com.ugraks.project1.data.local.repository.PedometerRepository
@@ -45,4 +47,10 @@ abstract class RepositoryModule { // Binds kullanılıyorsa sınıf abstract olm
     abstract fun bindCalorieRepository( // Metot abstract olmalı ve implementasyon sınıfını parametre almalı
         calorieRepositoryImpl: CalorieRepositoryImpl // Hilt bu implementasyonu sağlayabilir (@Inject constructor sayesinde)
     ): CalorieRepository // Metot Repository arayüzünü döndürmeli
+
+    @Binds // <-- YENİ BAĞLAMA METODU
+    @Singleton
+    abstract fun bindFitnessRepository(
+        fitnessRepositoryImpl: FitnessRepositoryImpl
+    ): FitnessRepository // <-- FitnessRepository arayüzünü döndürür
 }

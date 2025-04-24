@@ -11,6 +11,7 @@ import com.ugraks.project1.data.local.AppDatabase // Database sınıfını impor
 import com.ugraks.project1.data.local.dao.CalorieRecordDao // DAO'ları import edin
 import com.ugraks.project1.data.local.dao.DailyStepDao
 import com.ugraks.project1.data.local.dao.DailySummaryDao
+import com.ugraks.project1.data.local.dao.ExerciseDao
 import com.ugraks.project1.data.local.dao.FoodItemDao
 import com.ugraks.project1.data.local.dao.RecipeDao
 import javax.inject.Singleton // Tek örnek olacağını belirtir
@@ -77,6 +78,12 @@ object DatabaseModule { // object -> Singleton olmasını sağlar
     @Singleton
     fun provideFoodItemDao(db: AppDatabase): FoodItemDao {
         return db.foodItemDao() // Database örneğinden FoodItem DAO'yu alır
+    }
+
+    @Provides // <-- YENİ METOT
+    @Singleton // <-- Singleton olarak sağlayın
+    fun provideExerciseDao(db: AppDatabase): ExerciseDao {
+        return db.exerciseDao() // Database örneğinden yeni DAO'yu sağlar
     }
 
     // Eğer FoodItem'ları asset'ten okuyan kodu Room'a taşımadıysanız ve ViewModel'da Context kullanmak istemiyorsanız,

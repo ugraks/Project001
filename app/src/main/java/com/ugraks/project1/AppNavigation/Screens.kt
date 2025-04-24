@@ -1,5 +1,6 @@
 package com.ugraks.project1.AppNavigation
 
+import android.net.Uri
 import androidx.navigation.NavHostController
 import kotlinx.serialization.Serializable
 
@@ -24,6 +25,14 @@ sealed class Screens(val route : String) {
             const val ROUTE = "FoodCaloriesPage/{foodItemName}"
         }
     }
+    @Serializable
+    object ExerciseListScreen : Screens("exercise_list_screen/{muscleGroupsString}") { // <-- Placeholder eklendi
+        fun createRoute(muscleGroupsString: String): String {
+            // Navigasyonda özel karakterler sorun yaratmasın diye encode etmek iyi bir fikirdir
+            val encodedString = Uri.encode(muscleGroupsString) // android.net.Uri importu gerekebilir
+            return "exercise_list_screen/$encodedString"
+        }
+    }
 
     @Serializable
     object KeepNotePage : Screens("KeepNotePage")
@@ -40,10 +49,6 @@ sealed class Screens(val route : String) {
 
     @Serializable
     object MainScreen : Screens("mainScreen")
-    @Serializable
-    object ExerciseListScreen : Screens("exerciseListScreen/{muscleGroups}") {
-        fun createRoute(muscleGroups: String) = "exerciseListScreen/$muscleGroups"
-    }
 
     @Serializable
     object PedoMeterScreen : Screens("pedoMeterScreen")

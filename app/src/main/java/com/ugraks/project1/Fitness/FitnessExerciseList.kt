@@ -1,5 +1,6 @@
-package com.ugraks.project1.Fitness
+package com.ugraks.project1.Fitness // Kendi paket adınız
 
+import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -23,6 +24,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState // StateFlow'u izlemek için
+import androidx.compose.runtime.getValue // State değerini almak için
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -34,18 +37,33 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel // ViewModel'ı inject etmek için
 import androidx.navigation.NavController
 import com.ugraks.project1.R
-import kotlin.collections.filter
+// Exercise data class'ı yerine Entity kullanılacak
+// import kotlin.collections.filter // Filter fonksiyonu hala kullanılabilir ama ViewModel'da yapılıyor
+import com.ugraks.project1.data.local.entity.ExerciseEntity // YENİ: ExerciseEntity importu
+import com.ugraks.project1.ui.viewmodels.FitnessViewModel // YENİ: FitnessViewModel importu
+
 
 @Composable
 fun ExerciseListScreen(
     navController: NavController,
-    muscleGroups: List<String>,
-    exercises: List<Exercise>
+    muscleGroups: List<String>, // Başlık için hala parametre olarak gelebilir (NavArgs'tan)
+    // Egzersiz listesi artık ViewModel'dan gelecek, parametre kaldırıldı
+    // exercises: List<Exercise>, // Bu parametre kaldırıldı
+    viewModel: FitnessViewModel = hiltViewModel() // YENİ: ViewModel inject et
 ) {
-    val filteredExercises = exercises.filter { it.muscleGroup in muscleGroups }
-    val expandedExercise = remember { mutableStateOf<Exercise?>(null) }
+    // Egzersiz listesi artık ViewModel'dan geliyor ve ViewModel'da filtreleniyor
+    // val filteredExercises = exercises.filter { it.muscleGroup in muscleGroups } // Bu satır kaldırıldı
+
+    // ViewModel'dan filtrelenmiş egzersiz listesini StateFlow olarak izle
+    val filteredExercises by viewModel.filteredExercises.collectAsState() // YENİ: ViewModel'dan al
+
+
+    // Genişletilmiş egzersiz state'i (UI state'i olarak kalır, tipi ExerciseEntity olacak)
+    val expandedExercise = remember { mutableStateOf<ExerciseEntity?>(null) } // YENİ: Tipi ExerciseEntity?
+    Log.d("ExerciseListScreen", "NavArgs Muscle Groups: ${muscleGroups.joinToString(",")}") // <-- Bu satırı ekleyin
 
     Box(modifier = Modifier.fillMaxSize()) {
 
@@ -71,11 +89,11 @@ fun ExerciseListScreen(
                 .padding(top = 90.dp) // geri butonuyla başlık arasında boşluk
         ) {
 
-            // 🏷 Başlık
+            // 🏷 Başlık (Parametreden gelen kas gruplarını kullanır)
             Text(
                 text = "Exercises for ${muscleGroups.joinToString(", ")}",
                 style = MaterialTheme.typography.titleMedium.copy(
-                    fontFamily = FontFamily.SansSerif, // Cursive yerine SansSerif kullanıldı
+                    fontFamily = FontFamily.SansSerif,
                     fontSize = 26.sp,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold
@@ -83,29 +101,31 @@ fun ExerciseListScreen(
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 24.dp) // Başlıkla kartlar arasında boşluk arttırıldı
+                    .padding(bottom = 24.dp)
             )
 
-            // 📋 Egzersiz Kartları
+            // 📋 Egzersiz Kartları (ViewModel'dan gelen filteredExercises listesini kullanır)
+            // Liste boşsa (ViewModel henüz yüklemediyse veya filtre sonucu boşsa) boş liste gösterilir
             LazyColumn(
                 contentPadding = PaddingValues(bottom = 80.dp)
             ) {
-                itemsIndexed(filteredExercises) { _, exercise ->
+                // itemsIndexed ViewModel'dan gelen filteredExercises listesini kullanır (List<ExerciseEntity>)
+                itemsIndexed(filteredExercises, key = { _, exercise -> exercise.name }) { _, exercise -> // exercise artık ExerciseEntity tipinde
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 12.dp) // Kartlar arasındaki boşluk arttırıldı
+                            .padding(vertical = 12.dp)
                             .clickable {
                                 expandedExercise.value =
                                     if (expandedExercise.value == exercise) null else exercise
                             },
-                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp), // Kartlara gölge eklendi
-                        shape = RoundedCornerShape(16.dp) // Kart köşeleri yuvarlatıldı
+                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                        shape = RoundedCornerShape(16.dp)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            // Egzersiz Adı
+                            // Egzersiz Adı (exercise.name - ExerciseEntity'de mevcut)
                             Text(
-                                text = exercise.name,
+                                text = exercise.name, // YENİ: ExerciseEntity'den adı al
                                 style = MaterialTheme.typography.titleMedium.copy(
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 20.sp,
@@ -116,11 +136,10 @@ fun ExerciseListScreen(
                                     .align(Alignment.CenterHorizontally)
                             )
 
-                            // Resim veya İkon - BURASI DEĞİŞTİRİLDİ
-                            // expandedExercise.value == exercise ise gerçek resmi göster, aksi halde varsayılan ikonu göster
+                            // Resim veya İkon (exercise.name - ExerciseEntity'de mevcut)
                             val currentImageResource = if (expandedExercise.value == exercise) {
                                 // Kart açıksa, egzersize özel resmi al
-                                getExerciseImageResource(exercise.name)
+                                getExerciseImageResource(exercise.name) // exercise.name hala String
                             } else {
                                 // Kart kapalıysa, varsayılan fitness ikonunu göster
                                 R.drawable.baseline_fitness_center_24 // Sizin varsayılan ikonunuz
@@ -131,25 +150,28 @@ fun ExerciseListScreen(
                                 contentDescription = if (expandedExercise.value == exercise) exercise.name else "Fitness Icon",
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(200.dp) // Orijinal resim yüksekliğini kullan
+                                    .height(200.dp)
                                     .padding(bottom = 12.dp)
                                     .clip(RoundedCornerShape(16.dp)),
-                                // contentScale = ContentScale.Crop // İhtiyaca göre scale type eklenebilir
+                                // contentScale = ContentScale.Crop
                             )
 
 
-                            // Egzersiz Açıklamaları ve Adımlar (Burada bir değişiklik yapılmadı)
+                            // Egzersiz Açıklamaları ve Adımlar (ExerciseEntity'den alınır)
+                            // AnimatedVisibility'nin visible kontrolü hala ExerciseEntity tipini kullanır
                             AnimatedVisibility(visible = expandedExercise.value == exercise) {
                                 Column {
+                                    // muscleGroup (exercise.muscleGroup - ExerciseEntity'de mevcut)
                                     Text(
-                                        text = "Muscle Group: ${exercise.muscleGroup}",
+                                        text = "Muscle Group: ${exercise.muscleGroup}", // YENİ: ExerciseEntity'den al
                                         style = MaterialTheme.typography.bodyMedium.copy(
                                             color = MaterialTheme.colorScheme.onBackground
                                         ),
                                         modifier = Modifier.padding(bottom = 8.dp)
                                     )
+                                    // description (exercise.description - ExerciseEntity'de mevcut)
                                     Text(
-                                        text = "Description: ${exercise.description}",
+                                        text = "Description: ${exercise.description}", // YENİ: ExerciseEntity'den al
                                         style = MaterialTheme.typography.bodyMedium.copy(
                                             color = MaterialTheme.colorScheme.onBackground
                                         ),
@@ -163,7 +185,8 @@ fun ExerciseListScreen(
                                         modifier = Modifier.padding(bottom = 8.dp)
                                     )
 
-                                    exercise.howToDo.split(" | ").forEach { step ->
+                                    // howToDo (exercise.howToDo - ExerciseEntity'de mevcut)
+                                    exercise.howToDo.split(" | ").forEach { step -> // YENİ: ExerciseEntity'den al
                                         Text(
                                             text = step.trim(),
                                             style = MaterialTheme.typography.bodyMedium.copy(
@@ -177,9 +200,30 @@ fun ExerciseListScreen(
                         }
                     }
                 }
+                // Liste boşsa bilgi mesajı göster
+                item {
+                    if (filteredExercises.isEmpty()) {
+                        Box(
+                            modifier = Modifier.fillParentMaxSize(), // LazyColumn içinde tam alanı kapla
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                "No exercises found for selected muscle groups.",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(16.dp)
+                            )
+                        }
+                    }
+                }
             }
         }
     }
 }
 
+// getExerciseImageResource fonksiyonu bu dosyadan kaldırılmadı, hala burada veya ayrı bir Utils dosyasında olabilir.
+// fun getExerciseImageResource(exerciseName: String): Int { ... }
 
+// Exercise data class'ı bu dosyadan kaldırıldı, kendi dosyasında (Exercise.kt) tanımlı
+// data class Exercise(...)

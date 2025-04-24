@@ -1,5 +1,7 @@
 package com.ugraks.project1.di
 
+import com.ugraks.project1.data.local.repository.ActivityRepository
+import com.ugraks.project1.data.local.repository.ActivityRepositoryImpl
 import com.ugraks.project1.data.local.repository.BoxingRepository
 import com.ugraks.project1.data.local.repository.BoxingRepositoryImpl
 import com.ugraks.project1.data.local.repository.CalorieRepositoryImpl
@@ -61,4 +63,10 @@ abstract class RepositoryModule { // Binds kullanılıyorsa sınıf abstract olm
     abstract fun bindBoxingRepository(
         boxingRepositoryImpl: BoxingRepositoryImpl
     ): BoxingRepository // <-- BoxingRepository arayüzünü döndürür
+
+    @Binds // Bu fonksiyon, bir arayüzün hangi implementasyon ile sağlanacağını belirtir
+    @Singleton // Sağlanan bağımlılığın Singleton olacağını belirtir
+    abstract fun bindActivityRepository(
+        activityRepositoryImpl: ActivityRepositoryImpl
+    ): ActivityRepository
 }

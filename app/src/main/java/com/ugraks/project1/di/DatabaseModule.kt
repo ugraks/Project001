@@ -8,6 +8,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext // Application Context sağlamak için
 import dagger.hilt.components.SingletonComponent // Uygulama yaşam döngüsü boyunca geçerli olacak bileşen
 import com.ugraks.project1.data.local.AppDatabase // Database sınıfını import edin
+import com.ugraks.project1.data.local.dao.ActivityDao
 import com.ugraks.project1.data.local.dao.BoxingItemDao
 import com.ugraks.project1.data.local.dao.CalorieRecordDao // DAO'ları import edin
 import com.ugraks.project1.data.local.dao.DailyStepDao
@@ -28,7 +29,7 @@ object DatabaseModule { // object -> Singleton olmasını sağlar
         return Room.databaseBuilder(
             context, // Application Context
             AppDatabase::class.java, // Database sınıfı
-            "calorie_app_database" // Veritabanı dosyasının adı (dahili depolamada)
+            "app_database" // Veritabanı dosyasının adı (dahili depolamada)
         )
             // Eğer veritabanı versiyonu ileride artarsa migrasyon eklemelisiniz.
             // Migrasyon eklemeyecekseniz ve yapı değişiminde verinin silinip yeniden oluşturulmasını kabul ediyorsanız:
@@ -91,6 +92,12 @@ object DatabaseModule { // object -> Singleton olmasını sağlar
     @Singleton // <-- Singleton olarak sağlayın
     fun provideBoxingItemDao(db: AppDatabase): BoxingItemDao {
         return db.boxingItemDao() // Database örneğinden yeni DAO'yu sağlar
+    }
+
+    @Provides // Bu fonksiyonun bir bağımlılık sağladığını belirtir
+    @Singleton // Sağlanan bağımlılığın uygulamanın ömrü boyunca tek bir instance olacağını belirtir
+    fun provideActivityDao(db: AppDatabase): ActivityDao {
+        return db.activityDao()
     }
 
     // Eğer FoodItem'ları asset'ten okuyan kodu Room'a taşımadıysanız ve ViewModel'da Context kullanmak istemiyorsanız,

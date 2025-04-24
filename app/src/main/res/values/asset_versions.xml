@@ -4,4 +4,5 @@
     <integer name="food_asset_version">1</integer>
     <integer name="fitness_asset_version">1</integer>
     <integer name="boxing_asset_version">1</integer>
+    <integer name="sports_asset_version">1</integer>
 </resources>

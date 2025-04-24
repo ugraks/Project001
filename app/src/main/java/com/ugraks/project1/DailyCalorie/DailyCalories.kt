@@ -1,4 +1,4 @@
-package com.ugraks.project1.DailyCalorie
+package com.ugraks.project1.DailyCalorie // Paket adınızı projenize göre ayarlayın
 
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -34,10 +34,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue // Bu import hala expanded state'i için gerekli
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.setValue // Bu import hala expanded state'i için gerekli
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -47,75 +49,44 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.ugraks.project1.presentation.dailycalorie.DailyCalorieViewModel // ViewModel'inizi import edin
 
 @Composable
-fun DailyCalories(navController: NavController) {
-    val context = LocalContext.current // Toast için context
+fun DailyCalories(
+    navController: NavController,
+    viewModel: DailyCalorieViewModel = hiltViewModel()
+) {
+    val context = LocalContext.current
 
-    var height by remember { mutableStateOf("") }
-    var weight by remember { mutableStateOf("") }
-    var age by remember { mutableStateOf("") }
-    var isMale by remember { mutableStateOf(false) }
-    var isFemale by remember { mutableStateOf(false) }
-    var isExercising by remember { mutableStateOf(false) }
-    var selectedSport by remember { mutableStateOf("Yoga") }
-    var exerciseDuration by remember { mutableStateOf("") }
-    var dailyCalorieIntake by remember { mutableStateOf(0) }
+    // ViewModel'deki State'lerin değerlerine .value ile erişiyoruz
+    // Bu, "by" delegasyon hatasını atlatmamıza yardımcı olmalı
+    val height = viewModel.height.value
+    val weight = viewModel.weight.value
+    val age = viewModel.age.value
+    val isMale = viewModel.isMale.value
+    val isFemale = viewModel.isFemale.value
+    val isExercising = viewModel.isExercising.value
+    val exerciseDuration = viewModel.exerciseDuration.value
+    val dailyCalorieIntake = viewModel.dailyCalorieIntake.value
+    val showErrorToast = viewModel.showErrorToast.value
 
-    val sportsList = listOf(
-        "Yoga", "Running (Normal)", "Cycling", "Swimming", "Basketball", "Football", "Tennis",
-        "Badminton", "Boxing", "Hiking", "Dance", "Rowing", "Martial Arts", "Skiing", "Snowboarding",
-        "Weightlifting", "Pilates", "Crossfit", "Jogging", "Power Walking", "Speed Walking",
-        "Trail Running", "Nordic Walking", "Long-Distance Running", "Walking (4 km/h)",
-        "Walking (5 km/h)", "Walking (6 km/h)", "Walking (7 km/h)", "Running (5 km/h)",
-        "Running (10 km/h)", "Running (12 km/h)", "Running (14 km/h)", "Running (16 km/h)",
-        "Wrestling", "Karate", "Judo", "Kickboxing", "Muay Thai", "Taekwondo", "Mountaineering"
-    )
+    // Aktiviteler listesi Flow'dan State'e collectAsState ile dönüştürülür ve sonra .value ile değeri alınır
+    val activities = viewModel.activities.collectAsState().value
+    val selectedSport = viewModel.selectedSport // selectedSport ViewModel'de "by" ile tanımlı olduğu için doğrudan kullanabiliriz veya .value yapabiliriz. ViewModel içinde "by" kullandık, burada da Composable'da "by" kullanalım daha tutarlı olur.
+    val selectedSportBy = viewModel.selectedSport // selectedSport ViewModel'de "by" ile tanımlıysa Composable'da da "by" kullanmak daha iyidir. Önceki ViewModel kodunda selectedSport "by" ile tanımlıydı, bu versiyonda da öyle kalsın.
 
-    // MET değerleri (ortalama değerlerdir, kişiden kişiye değişebilir)
-    val sportMETValues = mapOf(
-        "Yoga" to 2.5,
-        "Running (Normal)" to 7.0,
-        "Running (5 km/h)" to 6.0,
-        "Running (10 km/h)" to 9.0,
-        "Running (12 km/h)" to 10.0,
-        "Running (14 km/h)" to 11.5,
-        "Running (16 km/h)" to 12.5,
-        "Cycling" to 6.0,
-        "Swimming" to 7.0,
-        "Basketball" to 6.0,
-        "Football" to 7.0,
-        "Tennis" to 5.0,
-        "Badminton" to 5.5,
-        "Boxing" to 8.0,
-        "Hiking" to 3.0, // Daha gerçekçi bir değer
-        "Dance" to 5.0,
-        "Rowing" to 6.0,
-        "Martial Arts" to 7.5,
-        "Skiing" to 5.5,
-        "Snowboarding" to 4.0,
-        "Weightlifting" to 3.0,
-        "Pilates" to 3.0,
-        "Crossfit" to 8.0,
-        "Jogging" to 5.0,
-        "Power Walking" to 3.5,
-        "Speed Walking" to 5.0,
-        "Trail Running" to 6.0,
-        "Nordic Walking" to 4.5,
-        "Long-Distance Running" to 8.0,
-        "Walking (4 km/h)" to 2.0, // Daha gerçekçi bir değer
-        "Walking (5 km/h)" to 3.0,
-        "Walking (6 km/h)" to 3.8,
-        "Walking (7 km/h)" to 4.5,
-        "Wrestling" to 10.0,
-        "Karate" to 8.0,
-        "Judo" to 8.0,
-        "Kickboxing" to 8.5,
-        "Muay Thai" to 9.0,
-        "Taekwondo" to 7.0
-        // "Mountaineering (Dağcılık)" to 6.0 // Örnek bir değer
-    )
+    // Dropdown menü açık/kapalı durumu Composable'ın kendi state'i olabilir
+    var expanded by remember { mutableStateOf(false) } // Bu state Composable'ın kendi state'i
+
+    // ViewModel'den gelen hata mesajı state'ini dinle ve Toast göster
+    LaunchedEffect(showErrorToast) {
+        if (showErrorToast) {
+            Toast.makeText(context, "Please fill in all required fields correctly.", Toast.LENGTH_SHORT).show()
+            viewModel.toastShown()
+        }
+    }
 
     val colorScheme = MaterialTheme.colorScheme
     val topPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
@@ -125,7 +96,6 @@ fun DailyCalories(navController: NavController) {
             .fillMaxSize()
             .background(colorScheme.background)
     ) {
-        // Geri butonu
         IconButton(
             onClick = { navController.navigateUp() },
             modifier = Modifier
@@ -156,7 +126,6 @@ fun DailyCalories(navController: NavController) {
                 modifier = Modifier.padding(vertical = 24.dp)
             )
 
-            // Height & Weight
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -165,7 +134,7 @@ fun DailyCalories(navController: NavController) {
             ) {
                 OutlinedTextField(
                     value = height,
-                    onValueChange = { if (it.all { c -> c.isDigit() }) height = it },
+                    onValueChange = { viewModel.onHeightChange(it) },
                     label = { Text("Height (cm)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     shape = RoundedCornerShape(16.dp),
@@ -173,7 +142,7 @@ fun DailyCalories(navController: NavController) {
                 )
                 OutlinedTextField(
                     value = weight,
-                    onValueChange = { if (it.all { c -> c.isDigit() }) weight = it },
+                    onValueChange = { viewModel.onWeightChange(it) },
                     label = { Text("Weight (kg)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     shape = RoundedCornerShape(16.dp),
@@ -181,10 +150,9 @@ fun DailyCalories(navController: NavController) {
                 )
             }
 
-            // Age
             OutlinedTextField(
                 value = age,
-                onValueChange = { if (it.all { c -> c.isDigit() }) age = it },
+                onValueChange = { viewModel.onAgeChange(it) },
                 label = { Text("Age") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 shape = RoundedCornerShape(16.dp),
@@ -193,58 +161,44 @@ fun DailyCalories(navController: NavController) {
                     .padding(vertical = 8.dp)
             )
 
-            // Gender
             Spacer(modifier = Modifier.height(8.dp))
             Text("Gender:", fontWeight = FontWeight.SemiBold)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(
                     checked = isMale,
-                    onCheckedChange = {
-                        if (it) {
-                            isMale = true
-                            isFemale = false
-                        }
-                    },
+                    onCheckedChange = { viewModel.onGenderChange(isMale = it, isFemale = !it) },
                     colors = CheckboxDefaults.colors(checkedColor = colorScheme.primary)
                 )
                 Text("Male", modifier = Modifier.padding(end = 16.dp))
                 Checkbox(
                     checked = isFemale,
-                    onCheckedChange = {
-                        if (it) {
-                            isFemale = true
-                            isMale = false
-                        }
-                    },
+                    onCheckedChange = { viewModel.onGenderChange(isMale = !it, isFemale = it) },
                     colors = CheckboxDefaults.colors(checkedColor = colorScheme.primary)
                 )
                 Text("Female")
             }
 
-            // Exercise
             Spacer(modifier = Modifier.height(8.dp))
             Text("Exercise:", fontWeight = FontWeight.SemiBold)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(
                     checked = !isExercising,
-                    onCheckedChange = { if (it) isExercising = false },
+                    onCheckedChange = { if (it) viewModel.onExerciseStatusChange(isExercising = false) },
                     colors = CheckboxDefaults.colors(checkedColor = colorScheme.primary)
                 )
                 Text("I don't exercise", modifier = Modifier.padding(end = 16.dp))
                 Checkbox(
                     checked = isExercising,
-                    onCheckedChange = { if (it) isExercising = true },
+                    onCheckedChange = { if (it) viewModel.onExerciseStatusChange(isExercising = true) },
                     colors = CheckboxDefaults.colors(checkedColor = colorScheme.primary)
                 )
                 Text("I exercise")
             }
 
-            // Sport & Duration
-            if (isExercising) {
-                var expanded by remember { mutableStateOf(false) }
-
+            // Sport & Duration (Sadece egzersiz yapılıyorsa ve aktiviteler yüklendiyse göster)
+            if (isExercising && activities.isNotEmpty()) {
                 OutlinedTextField(
-                    value = selectedSport,
+                    value = selectedSportBy, // ViewModel'den "by" ile alınan değeri kullan
                     onValueChange = {},
                     label = { Text("Select Sport") },
                     readOnly = true,
@@ -261,10 +215,10 @@ fun DailyCalories(navController: NavController) {
                     expanded = expanded,
                     onDismissRequest = { expanded = false }
                 ) {
-                    sportsList.forEach { sport ->
+                    activities.forEach { sport ->
                         DropdownMenuItem(
                             onClick = {
-                                selectedSport = sport
+                                viewModel.onSportSelect(sport)
                                 expanded = false
                             },
                             text = { Text(sport) }
@@ -274,59 +228,19 @@ fun DailyCalories(navController: NavController) {
 
                 OutlinedTextField(
                     value = exerciseDuration,
-                    onValueChange = { if (it.all { c -> c.isDigit() }) exerciseDuration = it },
+                    onValueChange = { viewModel.onExerciseDurationChange(it) },
                     label = { Text("Duration in minutes") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 8.dp)
                 )
+            } else if (isExercising && activities.isEmpty()) {
+                Text("Loading activities...", modifier = Modifier.padding(top = 8.dp))
             }
 
-            // Calculate Button
             Button(
-                onClick = {
-                    val validInput = height.isNotEmpty() &&
-                            weight.isNotEmpty() &&
-                            age.isNotEmpty() &&
-                            (isMale || isFemale) &&
-                            (
-                                    !isExercising ||
-                                            (isExercising && exerciseDuration.isNotEmpty() && selectedSport.isNotEmpty())
-                                    )
-
-                    if (!validInput) {
-                        Toast.makeText(context, "Please fill in all fields.", Toast.LENGTH_SHORT).show()
-                        return@Button
-                    }
-
-                    val h = height.toDouble()
-                    val w = weight.toDouble()
-                    val a = age.toDouble()
-
-                    val bmr = if (isMale) {
-                        10 * w + 6.25 * h - 5 * a + 5
-                    } else {
-                        10 * w + 6.25 * h - 5 * a - 161
-                    }
-
-                    val baseActivityFactor = 1.2 // Sedentary veya hafif aktif için
-
-                    val dailyCalorieWithoutExercise = bmr * baseActivityFactor
-
-                    var caloriesBurnedExercise = 0.0
-
-                    if (isExercising && exerciseDuration.isNotEmpty()) {
-                        val minutes = exerciseDuration.trim().toDoubleOrNull() ?: 0.0
-                        val hours = minutes / 60.0
-                        val metValue = sportMETValues[selectedSport] ?: 1.5 // Varsayılan MET değeri
-
-                        // Kalori Yakımı (kcal) ≈ MET x Vücut Ağırlığı (kg) x Süre (saat)
-                        caloriesBurnedExercise = metValue * w * hours
-                    }
-
-                    dailyCalorieIntake = (dailyCalorieWithoutExercise + caloriesBurnedExercise).toInt()
-                },
+                onClick = { viewModel.calculateCalories() },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 16.dp),
@@ -335,11 +249,10 @@ fun DailyCalories(navController: NavController) {
                 Text("Calculate Calories", color = colorScheme.onPrimary)
             }
 
-            // Result
             if (dailyCalorieIntake > 0) {
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "Daily Calorie Intake: $dailyCalorieIntake kcal",
+                    text = "Estimated Daily Calorie Need: $dailyCalorieIntake kcal",
                     fontSize = 20.sp,
                     color = colorScheme.primary,
                     fontWeight = FontWeight.Bold
@@ -352,5 +265,5 @@ fun DailyCalories(navController: NavController) {
 @Preview(showBackground = true)
 @Composable
 fun DailyCaloriesPreview() {
-    //DailyCalories()
+    Text("Preview not available for Hilt ViewModel")
 }

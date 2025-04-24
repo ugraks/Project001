@@ -48,17 +48,26 @@ fun readAndParseItemsFromAssets(context: Context): List<FoodItem> {
     return foodItems
 }
 
-fun calculateNutritionalValues(item: FoodItemEntity, quantity: Int, isKg: Boolean, isLiters: Boolean): NutritionalValues {
+fun calculateNutritionalValues(item: FoodItemEntity, quantity: Int, isKg: Boolean, isLiters: Boolean): NutritionalValues { // <-- item artık FoodItemKeepNote? değil FoodItemKeepNote
+
+    // Fonksiyonun içi aynı kalabilir, çünkü item'ın artık null olmadığını garanti ettik.
+    // Ancak fonksiyon içindeki hesaplama mantığının (quantity'den quantityInBaseUnits'e, sonra scaleFactor'e geçiş)
+    // bizim KeepNotePage'de quantityDouble ve unitScale ile yaptığımızdan biraz farklı ve dolaylı olduğunu unutmayın.
+    // Hangi hesaplama mantığını kullanmak istediğinizi kontrol edin.
+    // Eğer bu fonksiyonu kullanacaksanız, fonksiyon içindeki hesaplamanın istediğiniz birim ölçeklendirmesini yaptığından emin olun.
+
     val quantityInBaseUnits = when {
         item.type == "Food" -> if (isKg) quantity * 1000.0 else quantity.toDouble()
         item.type == "Drink" -> if (isLiters) quantity * 1000.0 else quantity.toDouble()
-        else -> quantity.toDouble()
+        else -> quantity.toDouble() // Diğer tipler veya bilinmeyen durumlar
     }
-    val scaleFactor = quantityInBaseUnits / 1000.0
-    val totalCalories = (item.calories * scaleFactor).roundToInt()
+    val scaleFactor = quantityInBaseUnits / 1000.0 // 1000'e bölerek ölçeklendirme
+
+    val totalCalories = (item.calories * scaleFactor).roundToInt() // item.calories 1000 birim (kg/L) başına
     val totalProtein = item.proteinPerKgL * scaleFactor
     val totalFat = item.fatPerKgL * scaleFactor
     val totalCarb = item.carbPerKgL * scaleFactor
+
     return NutritionalValues(totalCalories, totalProtein, totalFat, totalCarb)
 }
 

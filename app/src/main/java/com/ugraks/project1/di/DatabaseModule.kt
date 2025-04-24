@@ -49,27 +49,32 @@ object DatabaseModule { // object -> Singleton olmasını sağlar
 
     // CalorieRecordDao örneğini sağlar
     @Provides
+    @Singleton
     fun provideCalorieRecordDao(db: AppDatabase): CalorieRecordDao {
         return db.calorieRecordDao() // Database örneğinden DAO'yu alır
     }
 
     // DailySummaryDao örneğini sağlar
     @Provides
+    @Singleton
     fun provideDailySummaryDao(db: AppDatabase): DailySummaryDao {
         return db.dailySummaryDao() // Database örneğinden DAO'yu alır
     }
 
     @Provides // Yeni metot
+    @Singleton
     fun provideDailyStepDao(db: AppDatabase): DailyStepDao {
         return db.dailyStepDao() // Database örneğinden yeni DAO'yu sağlar
     }
 
     @Provides // Yeni metot
+    @Singleton
     fun provideRecipeDao(db: AppDatabase): RecipeDao {
         return db.recipeDao() // Database örneğinden yeni DAO'yu sağlar
     }
 
     @Provides // Yeni metot
+    @Singleton
     fun provideFoodItemDao(db: AppDatabase): FoodItemDao {
         return db.foodItemDao() // Database örneğinden FoodItem DAO'yu alır
     }

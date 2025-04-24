@@ -1,75 +1,141 @@
-package com.ugraks.project1.ui.viewmodels
+package com.ugraks.project1.ui.viewmodels // Kendi ViewModel paket adınız
 
-import android.content.Context // Asset okumak için gerekirse
+import android.content.Context
 import android.os.Build
+import android.util.Log // Logcat için
 import androidx.annotation.RequiresApi
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope // Coroutine scope için
-import com.ugraks.project1.data.local.dao.CalorieRecordDao // DAO'ları import edin
-import com.ugraks.project1.data.local.dao.DailySummaryDao
-import com.ugraks.project1.data.local.entity.CalorieRecordEntity // Entity'leri import edin
+import com.ugraks.project1.data.local.entity.CalorieRecordEntity
 import com.ugraks.project1.data.local.entity.DailySummaryEntity
-import com.ugraks.project1.KeepNoteComposable.FoodItemKeepNote // Eğer hala asset'ten okunuyorsa data class'ı
-import com.ugraks.project1.KeepNoteComposable.readFoodItemsFromAssets // Asset okuma fonksiyonu
-import dagger.hilt.android.lifecycle.HiltViewModel // Hilt ViewModel annotation
-import dagger.hilt.android.qualifiers.ApplicationContext // Context inject etmek için
+import com.ugraks.project1.KeepNoteComposable.FoodItemKeepNote
+import com.ugraks.project1.R // R sınıfını import edin (asset_version'a erişmek için)
+import com.ugraks.project1.data.repository.CalorieRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.MutableStateFlow // Değerini değiştirebileceğimiz StateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.asStateFlow // MutableStateFlow'u StateFlow'a dönüştürmek için
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch // Coroutine başlatmak için
-import java.time.LocalDate // Tarih için (API 26+)
-import javax.inject.Inject // Bağımlılıkları inject etmek için
+import kotlinx.coroutines.launch
+import java.time.LocalDate
+import javax.inject.Inject
 
-// Hilt tarafından ViewModel olarak sağlanacağını belirtir
+// SharedPreferences için anahtar
+private const val PREFS_NAME = "asset_prefs"
+private const val LAST_LOADED_ASSET_VERSION_KEY = "last_loaded_asset_version"
+
 @HiltViewModel
 class CalorieViewModel @Inject constructor(
-    private val calorieRecordDao: CalorieRecordDao, // Hilt bu DAO'yu sağlar
-    private val dailySummaryDao: DailySummaryDao,   // Hilt bu DAO'yu sağlar
-    @ApplicationContext private val applicationContext: Context // Asset okumak için Application Context
+    private val repository: CalorieRepository,
+    @ApplicationContext private val applicationContext: Context // YENİ: Context tekrar inject edildi
 ) : ViewModel() {
+
+    // --- Food Items (Asset'ten Okuma ve Versiyon Kontrolü) ---
+
+    // Asset'ten okunan yiyecek listesini tutacak ve güncellenecek MutableStateFlow
+    private val _allFoodItems = MutableStateFlow<List<FoodItemKeepNote>>(emptyList())
+    // UI'ın izleyeceği sadece okunabilir StateFlow
+    val allFoodItems: StateFlow<List<FoodItemKeepNote>> = _allFoodItems.asStateFlow() // YENİ: List yerine StateFlow olarak sunulur
+
+
+    // ViewModel başlatıldığında asset kontrolü ve ilk yükleme yapılır
+    init {
+        checkAssetVersionAndLoadFoodItems()
+    }
+
+    // Asset versiyonunu kontrol eden ve gerektiğinde yiyecekleri yeniden yükleyen metot
+    private fun checkAssetVersionAndLoadFoodItems() {
+        viewModelScope.launch {
+            try {
+                // 1. Güncel asset versiyonunu oku (res/values/asset_version'dan)
+                val currentAssetVersion = applicationContext.resources.getInteger(R.integer.food_asset_version) // R.integer.food_asset_version
+
+                // 2. SharedPreferences'tan daha önce yüklenen versiyonu oku
+                val prefs = applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                val lastLoadedVersion = prefs.getInt(LAST_LOADED_ASSET_VERSION_KEY, 0) // Varsayılan 0
+
+                Log.d("AssetVersion", "Current Version: $currentAssetVersion, Last Loaded: $lastLoadedVersion")
+
+                // 3. Versiyonları karşılaştır
+                if (currentAssetVersion > lastLoadedVersion) {
+                    Log.d("AssetVersion", "New asset version detected. Reloading food items.")
+                    // Yeni versiyon varsa yeniden yükle
+                    loadFoodItems() // Yiyecekleri asset'ten yükle
+                    // Yeni versiyonu SharedPreferences'a kaydet
+                    with(prefs.edit()) {
+                        putInt(LAST_LOADED_ASSET_VERSION_KEY, currentAssetVersion)
+                        apply() // Asenkron kaydetme
+                    }
+                } else {
+                    Log.d("AssetVersion", "Asset version unchanged. Loading food items.")
+                    // Versiyon değişmemişse de yine de yükle (uygulama ilk defa açılıyorsa veya önbellek yoksa)
+                    // İsteğe bağlı: Eğer Room'da FoodItemEntity kullanıyorsanız, burası Room'dan okuma yeri olabilir
+                    loadFoodItems() // Yiyecekleri asset'ten yükle
+                }
+            } catch (e: Exception) {
+                Log.e("AssetVersion", "Error checking or loading asset version", e)
+                // Hata durumunda da yine de yüklemeye çalışabiliriz veya boş liste bırakabiliriz
+                loadFoodItems() // Hata olsa bile yüklemeyi dene
+            }
+        }
+    }
+
+    // Asset'ten yiyecekleri yükleyen ve StateFlow'u güncelleyen suspend metot
+    private suspend fun loadFoodItems() {
+        try {
+            // Repository'den asset'ten okunan listeyi al
+            val items = repository.getFoodItemsFromAssets()
+            // MutableStateFlow'un değerini güncelle
+            _allFoodItems.value = items
+            Log.d("AssetVersion", "Loaded ${items.size} food items from assets.")
+        } catch (e: Exception) {
+            Log.e("AssetVersion", "Error loading food items from assets", e)
+            _allFoodItems.value = emptyList() // Hata durumunda boş liste
+        }
+    }
+
 
     // --- Calorie Records ---
 
-    // Tüm kayıtları Room'dan Flow olarak al ve Compose StateFlow'a dönüştürerek UI'a sun.
-    // Room'daki her değişiklikte bu Flow yeni bir liste yayınlar ve UI otomatik güncellenir.
+    // Tüm kayıtları Repository'den Flow olarak al ve Compose StateFlow'a sun.
+    // Kaynak Repository metodu.
     val calorieRecords: StateFlow<List<CalorieRecordEntity>> =
-        calorieRecordDao.getAllRecords()
+        repository.getAllCalorieRecords()
             .stateIn(
-                scope = viewModelScope, // ViewModel'ın yaşam döngüsüne bağlı scope
-                started = SharingStarted.WhileSubscribed(5000), // UI aktifken veriyi paylaş
-                initialValue = emptyList() // Başlangıç değeri (UI ilk açıldığında)
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = emptyList()
             )
 
     // Yeni kayıt ekleme (UI'dan çağrılır)
     fun addCalorieRecord(record: CalorieRecordEntity) {
-        viewModelScope.launch { // Veritabanı işlemleri için Coroutine başlat
-            calorieRecordDao.insertRecord(record)
-            // Kayıt eklenince Room Flow'u günceller, UI otomatik değişir. Eski save fonksiyonunu çağırmaya gerek YOK.
+        viewModelScope.launch {
+            repository.insertCalorieRecord(record)
         }
     }
 
     // Kayıt silme (UI'dan çağrılır)
     fun deleteCalorieRecord(record: CalorieRecordEntity) {
-        viewModelScope.launch { // Veritabanı işlemleri için Coroutine başlat
-            calorieRecordDao.deleteRecord(record)
-            // UI otomatik güncellenir. Eski save fonksiyonunu çağırmaya gerek YOK.
+        viewModelScope.launch {
+            repository.deleteCalorieRecord(record)
         }
     }
 
     // Tüm kayıtları silme (UI'dan çağrılır)
     fun clearAllCalorieRecords() {
-        viewModelScope.launch { // Veritabanı işlemleri için Coroutine başlat
-            calorieRecordDao.deleteAllRecords()
-            // UI otomatik güncellenir.
+        viewModelScope.launch {
+            repository.deleteAllCalorieRecords()
         }
     }
 
     // --- Daily Summaries ---
 
-    // Tüm günlük özetleri Room'dan Flow olarak al ve Compose StateFlow'a sun.
+    // Tüm günlük özetleri Repository'den Flow olarak al ve Compose StateFlow'a sun.
+    // Kaynak Repository metodu.
     val dailySummaries: StateFlow<List<DailySummaryEntity>> =
-        dailySummaryDao.getAllSummaries()
+        repository.getAllDailySummaries()
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5000),
@@ -77,30 +143,27 @@ class CalorieViewModel @Inject constructor(
             )
 
     // Günlük özet kaydetme veya güncelleme (UI'dan çağrılır)
-    // saveTodaySummary fonksiyonunun yerine geçer. Room'daki insertOnConflict = REPLACE sayesinde ekleme ve güncelleme tek metodla yapılır.
+    // DailySummaryEntity oluşturup Repository'e gönderiyoruz.
     @RequiresApi(Build.VERSION_CODES.O)
     fun saveOrUpdateDailySummary(calories: Int, protein: Double, fat: Double, carbs: Double) {
-        viewModelScope.launch { // Veritabanı işlemleri için Coroutine başlat
-            val date = LocalDate.now().toString() // Bugünün tarihi
+        viewModelScope.launch {
+            val date = LocalDate.now().toString()
             val summary = DailySummaryEntity(date, calories, protein, fat, carbs)
-            dailySummaryDao.insertOrUpdateSummary(summary)
-            // Özet eklenince/güncellenince Room Flow'u günceller, UI otomatik değişir. Eski saveTodaySummary fonksiyonunu çağırmaya gerek YOK.
+            repository.insertOrUpdateDailySummary(summary)
         }
     }
 
     // Belirli bir günlük özeti silme (UI'dan çağrılır)
     fun deleteDailySummary(summary: DailySummaryEntity) {
-        viewModelScope.launch { // Veritabanı işlemleri için Coroutine başlat
-            dailySummaryDao.deleteSummary(summary)
-            // UI otomatik güncellenir. Eski deleteSummary ve saveSummariesToFile fonksiyonlarını çağırmaya gerek YOK.
+        viewModelScope.launch {
+            repository.deleteDailySummary(summary)
         }
     }
 
     // Tüm günlük özetleri silme (UI'dan çağrılır)
     fun clearAllDailySummaries() {
-        viewModelScope.launch { // Veritabanı işlemleri için Coroutine başlat
-            dailySummaryDao.deleteAllSummaries()
-            // UI otomatik güncellenir. Eski clearAllSummaries fonksiyonunu çağırmaya gerek YOK.
+        viewModelScope.launch {
+            repository.deleteAllDailySummaries()
         }
     }
 
@@ -109,13 +172,6 @@ class CalorieViewModel @Inject constructor(
     @RequiresApi(Build.VERSION_CODES.O)
     suspend fun checkTodaySummaryExists(): Boolean {
         val date = LocalDate.now().toString()
-        return dailySummaryDao.getSummaryByDate(date) != null
-    }
-
-    // --- Food Items (Asset'ten Okuma) ---
-    // Eğer bu veri Room'a taşınmadıysa, burada okunabilir ve UI'a sunulabilir.
-    // ViewModel başlatıldığında bir kere okunur.
-    val allFoodItems: List<FoodItemKeepNote> by lazy { // lazy delegate ile ilk erişimde okunur
-        readFoodItemsFromAssets(applicationContext) // Asset okuma fonksiyonunu çağır
+        return repository.getDailySummaryByDate(date) != null
     }
 }

@@ -142,7 +142,7 @@ fun BoxingDetailListScreen(
                                 getBoxingImageResource(item.name) // item.name hala String
                             } else {
                                 // Kart kapalıysa, varsayılan ikonunu göster
-                                R.drawable.baseline_sports_martial_arts_24 // Sizin varsayılan ikonunuz
+                                R.drawable.baseline_sports_mma_24 // Sizin varsayılan ikonunuz
                             }
 
                             Image(

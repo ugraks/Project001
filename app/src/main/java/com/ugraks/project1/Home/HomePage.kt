@@ -269,7 +269,7 @@ fun HomePage(navController: NavHostController) {
                             .padding(bottom = 144.dp) // Üst üste gelmesi için padding
                     ) {
                         Icon(
-                            painter = painterResource(id = R.drawable.baseline_sports_martial_arts_24),
+                            painter = painterResource(id = R.drawable.baseline_sports_mma_24),
                             contentDescription = "Boxing"
                         )
                     }

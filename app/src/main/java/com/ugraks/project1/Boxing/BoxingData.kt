@@ -46,5 +46,5 @@ fun loadBoxingDataFromAssets(context: Context): List<BoxingItem> {
 // Function to get image resource for a boxing item (using default for now)
 fun getBoxingImageResource(itemName: String): Int {
     // TODO: Add specific image mappings for boxing items later
-    return R.drawable.baseline_fitness_center_24 // Placeholder icon
+    return R.drawable.baseline_sports_mma_24 // Placeholder icon
 }

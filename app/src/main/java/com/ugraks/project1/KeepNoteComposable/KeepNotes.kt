@@ -9,6 +9,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items // items yerine itemsIndexed de kullanabilirsiniz
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -43,8 +44,7 @@ import kotlin.math.roundToInt
 
 // Yardımcı fonksiyonların importları (calculateNutritionalValues, getImageResource)
 // calculateNutritionalValues fonksiyonunuzun FoodItemKeepNote ve Double quantityScale alacak şekilde ayarlandığından emin olun!
-import com.ugraks.project1.Foods.calculateNutritionalValues
-// import com.ugraks.project1.Foods.getImageResource // Eğer kullanılıyorsa import edin
+// import com.ugraks.project1.Foods.calculateNutritionalValues // Eğer kullanılıyorsa
 
 
 @RequiresApi(Build.VERSION_CODES.O) // LocalDate kullanımı nedeniyle gerekebilir
@@ -59,10 +59,14 @@ fun KeepNotePage(
 
     // --- State Management ---
     // allFoodItems ViewModel'dan List olarak alınacak (Repository asset'ten okuyor)
-    val allFoodItems by viewModel.allFoodItems.collectAsState() // YENİ: ViewModel'dan doğrudan List<FoodItemKeepNote> al
+    val allFoodItems by viewModel.allFoodItems.collectAsState() // ViewModel'dan doğrudan List<FoodItemKeepNote> al
 
     // calorieRecords ViewModel'dan Room'dan gelen Flow/StateFlow'u izleyecek
     val calorieRecords by viewModel.calorieRecords.collectAsState() // Room'dan gelen kayıt listesi
+
+    // *** YENİ STATE: DailyCalorieViewModel tarafından kaydedilen kalori ihtiyacı ***
+    val dailyCalculatedCalorieNeed by viewModel.dailyCalculatedCalorieNeed // ViewModel'dan gelen değeri gözlemle
+    // ****************************************************************************
 
     var isManualEntryMode by remember { mutableStateOf(false) }
 
@@ -78,11 +82,16 @@ fun KeepNotePage(
     var showClearConfirmationDialog by remember { mutableStateOf(false) }
     var selectedRecordToDelete by remember { mutableStateOf<CalorieRecordEntity?>(null) } // Tipi CalorieRecordEntity oldu
     var showDeleteConfirmationDialog by remember { mutableStateOf(false) }
+    // *** YENİ DIALOG STATE: Kalori aşımı uyarısı için ***
+    var showCalorieWarningDialog by remember { mutableStateOf(false) }
+    // Ek: Uyarı gösterildikten sonra tekrar hemen göstermemek için bir state
+    var hasShownCalorieWarningForCurrentState by remember { mutableStateOf(false) }
+    // *****************************************************
 
 
     // Common Input States
     var quantity by remember { mutableStateOf("") }
-    // YENİ: quantity'nin Double değerini burada hesaplayın
+    // quantity'nin Double değerini burada hesaplayın
     val quantityDouble = remember(quantity) { quantity.toDoubleOrNull() ?: 0.0 } // quantity değiştiğinde otomatik güncellenir
     var isKilogram by remember { mutableStateOf(false) }
     var isLiter by remember { mutableStateOf(false) }
@@ -116,32 +125,46 @@ fun KeepNotePage(
 
 
     // LaunchedEffect: Uygulama ilk açıldığında veya bu Composable ilk oluşturulduğunda çalışır
-    // TXT'den veri yükleme LaunchedEffect'i artık GEREKMEZ, ViewModel/Repository asset'ten okuyor.
     LaunchedEffect(Unit) {
         // allFoodItems ViewModel/Repository tarafından asset'ten okunur (lazy ile ViewModel'da)
         // calorieRecords ViewModel'dan Flow ile izlenir
     }
 
-
     // Effekt: Kayıtlar değiştikçe bugün için özet var mı kontrol et (Save/Update butonu için)
     var todayHasSummary by remember { mutableStateOf(false) }
     LaunchedEffect(calorieRecords) { // calorieRecords listesi veya ilk açılış değiştiğinde
-        // ViewModel'ın suspend fonksiyonunu CoroutineScope içinde çağır
         todayHasSummary = viewModel.checkTodaySummaryExists() // ViewModel metodunu çağırıyoruz
     }
 
-    // YENİ: Birim state'lerini (isKilogram, isLiter) otomatik ayarlayan LaunchedEffect KALDIRILDI
-    // Bu mantık artık arama sonucu clickable lambda'sının içine taşındı.
+    // *** YENİ LaunchedEffect: Toplam kalori ve günlük ihtiyacı karşılaştır ve uyarıyı tetikle ***
+    LaunchedEffect(totalCalories, dailyCalculatedCalorieNeed) {
+        // totalCalories veya dailyCalculatedCalorieNeed değiştiğinde çalışır
+
+        // Eğer günlük kalori ihtiyacı hesaplanmışsa (> 0) VE
+        // Tüketilen toplam kalori günlük ihtiyacı aştıysa VE
+        // Bu durum için uyarı henüz gösterilmediyse
+        if (dailyCalculatedCalorieNeed > 0 && totalCalories > dailyCalculatedCalorieNeed && !hasShownCalorieWarningForCurrentState) {
+            showCalorieWarningDialog = true
+            hasShownCalorieWarningForCurrentState = true // Uyarıyı bu durum için gösterildi olarak işaretle
+        }
+        // Eğer toplam kalori tekrar ihtiyacın altına düşerse, bir sonraki aşım için uyarıyı tekrar göstermeye izin ver
+        else if (dailyCalculatedCalorieNeed > 0 && totalCalories <= dailyCalculatedCalorieNeed) {
+            hasShownCalorieWarningForCurrentState = false // İhtiyaç karşılanınca uyarı state'ini sıfırla
+        }
+        // Eğer günlük kalori ihtiyacı 0'a dönerse (hesaplanmamış/sıfırlanmışsa) uyarı state'ini sıfırla
+        else if (dailyCalculatedCalorieNeed <= 0) {
+            hasShownCalorieWarningForCurrentState = false
+            showCalorieWarningDialog = false // Diyalog açıksa kapat
+        }
+    }
+    // ***************************************************************************************
 
 
-    // filteredFoodList: Arama metnine göre filtrelenmiş yiyecek listesi (ViewModel'dan gelen asset listesinden)
-    // allFoodItems ViewModel'dan geliyor, filtreleme UI'da kalabilir veya ViewModel'a taşınabilir.
-    // Şimdilik UI'da kalsın, ViewModel'dan gelen allFoodItems listesini kullansın.
+    // filteredFoodList: Arama metnine göre filtrelenmiş yiyecek listesi
     val filteredFoodList = remember(allFoodItems, searchText) {
         if (searchText.isEmpty()) {
             emptyList()
         } else {
-            // ViewModel'dan gelen allFoodItems listesi kullanılır
             allFoodItems.filter { it.name.lowercase(Locale.getDefault()).contains(searchText.lowercase(Locale.getDefault())) }
         }
     }
@@ -151,13 +174,13 @@ fun KeepNotePage(
         modifier = Modifier
             .fillMaxSize()
             .background(backgroundColor)
-            .padding(top = 25.dp, bottom = 25.dp)
+            .padding(top = 25.dp, bottom = 25.dp) // Box padding'i
     ) {
         // LazyColumn: Tüm içeriğin kaydırılabilir olmasını sağlar
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 20.dp, vertical = 24.dp),
+                .padding(horizontal = 20.dp, vertical = 24.dp), // LazyColumn padding'i
         ) {
             // Item for Top Bar: Back and Clear
             item {
@@ -219,8 +242,7 @@ fun KeepNotePage(
 
 
             // Items for Normal Entry UI (Manuel Modda Gizli)
-            // BU IF BLOĞU BAŞLIYOR
-            if (!isManualEntryMode) { // <-- YAPIŞTIRDIĞINIZ KODDA BU IF'İN KAPANIŞ PARANTEZİ EKSİKTİ, AŞAĞIDA EKLENDİ
+            if (!isManualEntryMode) {
                 // --- Normal Entry UI ---
                 // selectedFoodItem state'i kullanılır
 
@@ -321,7 +343,7 @@ fun KeepNotePage(
                                     )
                                     .clickable {
                                         // Seçimi ayarla
-                                        selectedFoodItem = item // YENİ: Tıklanan FoodItemKeepNote öğesini seçili state'e ata
+                                        selectedFoodItem = item // Tıklanan FoodItemKeepNote öğesini seçili state'e ata
 
                                         // Arama çubuğunu güncelle (isteğe bağlı, ama genelde yapılır)
                                         searchText = item.name
@@ -330,7 +352,7 @@ fun KeepNotePage(
                                         quantity = ""
                                         time = ""
 
-                                        // Birim checkbox state'lerini doğrudan güncelle (LaunchedEffect yerine bu mantık BURAYA TAŞINDI)
+                                        // Birim checkbox state'lerini doğrudan güncelle
                                         if (item.type == "Food") {
                                             isKilogram = true // Genellikle Food için varsayılan birim kg/g olur
                                             isLiter = false
@@ -393,12 +415,9 @@ fun KeepNotePage(
                     )
                 }
 
-                // Item for Unit Selection (Normal Mod) - UI BURADA KALIYOR VE DOĞRU YERDE
-                // Daha önce burada bulunan if { LaunchedEffect } bloğu KALDIRILDI
-                // Birim state'leri (isKilogram, isLiter) artık arama sonucu tıklama anında güncelleniyor.
-                // selectedFoodItem'ın null olmadığı VE tipinin uygun olduğu durumda bu UI Item'ı gösterilir.
-                if (selectedFoodItem != null && (selectedFoodItem?.type == "Food" || selectedFoodItem?.type == "Drink")) { // YENİ: Sadece bir öğe seçiliyse VE tipi uygunsa birim seçim UI'ını göster
-                    item { // <-- BU ITEM BLOĞU YERİNDE KALIYOR VE DOĞRU YAPI İÇİNDE
+                // Item for Unit Selection (Normal Mod)
+                if (selectedFoodItem != null && (selectedFoodItem?.type == "Food" || selectedFoodItem?.type == "Drink")) {
+                    item {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -407,28 +426,61 @@ fun KeepNotePage(
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             Text(text = "Unit:", color = primaryColor, fontWeight = FontWeight.Medium)
-                            // selectedFoodItem FoodItemKeepNote? tipinde, null değilse erişilebilir
                             if (selectedFoodItem?.type == "Food") {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Checkbox( checked = isKilogram, onCheckedChange = { isKilogram = it; if (it) isLiter = false }, enabled = selectedFoodItem != null )
+                                Row(modifier = Modifier.selectable( selected = isKilogram, onClick = {
+                                    // Düzeltme: selectable onClick'te it kullanılmaz, doğrudan state ayarlanır
+                                    isKilogram = true
+                                    isLiter = false
+                                }).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    // Checkbox'ın onCheckedChange'i hala it (yeni checked durumu) kullanabilir
+                                    Checkbox( checked = isKilogram, onCheckedChange = { isChecked -> isKilogram = isChecked; if (isChecked) isLiter = false }, enabled = selectedFoodItem != null )
                                     Text(text = "Kilogram (kg)", style = MaterialTheme.typography.bodyMedium, color = contentColor)
                                 }
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Checkbox( checked = !isKilogram, onCheckedChange = { isKilogram = !it; if (!it) isLiter = false }, enabled = selectedFoodItem != null )
+                                Row(modifier = Modifier.selectable( selected = !isKilogram, onClick = {
+                                    // Düzeltme: selectable onClick'te it kullanılmaz, doğrudan state ayarlanır
+                                    isKilogram = false // Kilogram değilse Gram'dır
+                                    isLiter = false
+                                }).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    // Checkbox'ın onCheckedChange'i hala it (yeni checked durumu) kullanabilir
+                                    // Bu Checkbox !isKilogram durumunu temsil ettiği için, checked olduğunda isKilogram false olmalı
+                                    Checkbox( checked = !isKilogram, onCheckedChange = { isChecked -> // it yerine isChecked kullanmak daha net olabilir
+                                        if (isChecked) { // Eğer Gram Checkbox'ı işaretlendiyse
+                                            isKilogram = false
+                                            isLiter = false
+                                        }
+                                        // Eğer Gram Checkbox'ının işareti kaldırıldıysa, başka bir şey otomatik seçilmez
+                                    }, enabled = selectedFoodItem != null )
                                     Text(text = "Gram (g)", style = MaterialTheme.typography.bodyMedium, color = contentColor)
                                 }
                             } else if (selectedFoodItem?.type == "Drink") {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Checkbox( checked = isLiter, onCheckedChange = { isLiter = it; if (it) isKilogram = false }, enabled = selectedFoodItem != null )
+                                Row(modifier = Modifier.selectable( selected = isLiter, onClick = {
+                                    // Düzeltme: selectable onClick'te it kullanılmaz, doğrudan state ayarlanır
+                                    isLiter = true
+                                    isKilogram = false
+                                }).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    // Checkbox'ın onCheckedChange'i hala it (yeni checked durumu) kullanabilir
+                                    Checkbox( checked = isLiter, onCheckedChange = { isChecked -> isLiter = isChecked; if (isChecked) isKilogram = false }, enabled = selectedFoodItem != null )
                                     Text(text = "Litre (L)", style = MaterialTheme.typography.bodyMedium, color = contentColor)
                                 }
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Checkbox( checked = !isLiter, onCheckedChange = { isLiter = !it; if (!it) isKilogram = false }, enabled = selectedFoodItem != null )
+                                Row(modifier = Modifier.selectable( selected = !isLiter, onClick = {
+                                    // Düzeltme: selectable onClick'te it kullanılmaz, doğrudan state ayarlanır
+                                    isLiter = false // Litre değilse Milliliter'dır
+                                    isKilogram = false
+                                }).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    // Checkbox'ın onCheckedChange'i hala it (yeni checked durumu) kullanabilir
+                                    // Bu Checkbox !isLiter durumunu temsil ettiği için, checked olduğunda isLiter false olmalı
+                                    Checkbox( checked = !isLiter, onCheckedChange = { isChecked -> // it yerine isChecked kullanmak daha net olabilir
+                                        if (isChecked) { // Eğer Milliliter Checkbox'ı işaretlendiyse
+                                            isLiter = false
+                                            isKilogram = false
+                                        }
+                                        // Eğer Milliliter Checkbox'ının işareti kaldırıldıysa, başka bir şey otomatik seçilmez
+                                    }, enabled = selectedFoodItem != null )
                                     Text(text = "Milliliter (ml)", style = MaterialTheme.typography.bodyMedium, color = contentColor)
                                 }
                             }
                         }
-                    } // <-- Unit Selection UI item'ı burada bitti ve doğru yerleştirildi
+                    }
                 }
 
 
@@ -446,6 +498,7 @@ fun KeepNotePage(
                             focusedContainerColor = colorScheme.surface, unfocusedContainerColor = colorScheme.surface,
                             focusedIndicatorColor = primaryColor, unfocusedIndicatorColor = Color.Gray, cursorColor = primaryColor
                         ),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         enabled = selectedFoodItem != null // Sadece yiyecek seçiliyse aktif
                     )
                 }
@@ -454,11 +507,7 @@ fun KeepNotePage(
                 item { Spacer(modifier = Modifier.height(20.dp)) }
 
 
-            } // <-- NORMAL GİRİŞ if (!isManualEntryMode) bloğunun kapanan parantezi BURAYA EKLENDİ
-
-
-            else { // --- Manual Entry UI ---
-                // YAPIŞTIRDIĞINIZ KODDA BU ELSE BLOĞUNUN KAPANIŞ PARANTEZİ EKSİKTİ, AŞAĞIDA EKLENDİ
+            } else { // --- Manual Entry UI ---
                 item {
                     Text(
                         text = "Manual Entry",
@@ -492,11 +541,11 @@ fun KeepNotePage(
                         horizontalArrangement = Arrangement.Center
                     ) {
                         Row(modifier = Modifier.selectable( selected = manualSelectedType == "Food", onClick = { manualSelectedType = "Food" }).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                            RadioButton( selected = manualSelectedType == "Food", onClick = { manualSelectedType = "Food" } )
+                            RadioButton( selected = manualSelectedType == "Food", onClick = { manualSelectedType = "Food" } ) // RadioButton onClick kullanır
                             Text("Food", style = MaterialTheme.typography.bodyMedium, color = contentColor)
                         }
                         Row(modifier = Modifier.selectable( selected = manualSelectedType == "Drink", onClick = { manualSelectedType = "Drink" }).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                            RadioButton( selected = manualSelectedType == "Drink", onClick = { manualSelectedType = "Drink" } )
+                            RadioButton( selected = manualSelectedType == "Drink", onClick = { manualSelectedType = "Drink" } ) // RadioButton onClick kullanır
                             Text("Drink", style = MaterialTheme.typography.bodyMedium, color = contentColor)
                         }
                     }
@@ -530,20 +579,32 @@ fun KeepNotePage(
                         horizontalArrangement = Arrangement.Center
                     ) {
                         if (manualSelectedType == "Food") {
-                            Row( modifier = Modifier.selectable( selected = selectedManualUnit == "g", onClick = { selectedManualUnit = "g" }).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically ) {
+                            Row( modifier = Modifier.selectable( selected = selectedManualUnit == "g", onClick = {
+                                // Düzeltme: selectable onClick'te it kullanılmaz, doğrudan state ayarlanır
+                                selectedManualUnit = "g"
+                            }).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically ) {
                                 RadioButton( selected = selectedManualUnit == "g", onClick = { selectedManualUnit = "g" } )
                                 Text("g", style = MaterialTheme.typography.bodyMedium, color = contentColor)
                             }
-                            Row( modifier = Modifier.selectable( selected = selectedManualUnit == "kg", onClick = { selectedManualUnit = "kg" }).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically ) {
+                            Row( modifier = Modifier.selectable( selected = selectedManualUnit == "kg", onClick = {
+                                // Düzeltme: selectable onClick'te it kullanılmaz, doğrudan state ayarlanır
+                                selectedManualUnit = "kg"
+                            }).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically ) {
                                 RadioButton( selected = selectedManualUnit == "kg", onClick = { selectedManualUnit = "kg" } )
                                 Text("kg", style = MaterialTheme.typography.bodyMedium, color = contentColor)
                             }
                         } else { // Drink
-                            Row( modifier = Modifier.selectable( selected = selectedManualUnit == "ml", onClick = { selectedManualUnit = "ml" }).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically ) {
+                            Row( modifier = Modifier.selectable( selected = selectedManualUnit == "ml", onClick = {
+                                // Düzeltme: selectable onClick'te it kullanılmaz, doğrudan state ayarlanır
+                                selectedManualUnit = "ml"
+                            }).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically ) {
                                 RadioButton( selected = selectedManualUnit == "ml", onClick = { selectedManualUnit = "ml" } )
                                 Text("ml", style = MaterialTheme.typography.bodyMedium, color = contentColor)
                             }
-                            Row( modifier = Modifier.selectable( selected = selectedManualUnit == "L", onClick = { selectedManualUnit = "L" }).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically ) {
+                            Row( modifier = Modifier.selectable( selected = selectedManualUnit == "L", onClick = {
+                                // Düzeltme: selectable onClick'te it kullanılmaz, doğrudan state ayarlanır
+                                selectedManualUnit = "L"
+                            }).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically ) {
                                 RadioButton( selected = selectedManualUnit == "L", onClick = { selectedManualUnit = "L" } )
                                 Text("L", style = MaterialTheme.typography.bodyMedium, color = contentColor)
                             }
@@ -631,18 +692,13 @@ fun KeepNotePage(
 
                 item { Spacer(modifier = Modifier.height(20.dp)) }
 
-            } // <-- MANUEL GİRİŞ else bloğunun kapanan parantezi BURAYA EKLENDİ
+            } // Manuel Giriş UI Sonu
 
 
             // Item for Add to List Button (Bu item artık if/else bloğunun dışında)
             item {
                 Button(
                     onClick = {
-                        // quantityDouble değişkeni başta tanımlandı ve quantity'den hesaplanıyor, onu kullanıyoruz.
-                        // val quantityValue = quantity.toDoubleOrNull() ?: 0.0 // Bu satır gereksiz
-
-                        // selectedFoodItem FoodItemKeepNote? tipinde
-
                         val calculatedCalories: Int
                         val calculatedProtein: Double
                         val calculatedFat: Double
@@ -658,8 +714,6 @@ fun KeepNotePage(
 
                         if (isManualEntryMode) {
                             // Manuel giriş alanlarının dolu ve geçerli olduğunu kontrol et
-                            // quantityValue yerine quantityDouble kullanın
-                            // .toIntOrNull()!! > 0 ve .toDoubleOrNull()!! >= 0.0 kontrolleri yerine sadece null olmadığını ve >= 0/0.0 olduğunu kontrol edin.
                             if (manualFoodName.isNotEmpty() && quantityDouble > 0 && time.isNotEmpty() &&
                                 manualCaloriesInput.toIntOrNull() != null && manualCaloriesInput.toIntOrNull()!! >= 0 &&
                                 manualProteinInput.toDoubleOrNull() != null && manualProteinInput.toDoubleOrNull()!! >= 0.0 &&
@@ -679,7 +733,7 @@ fun KeepNotePage(
                                 recordOriginalCarbPerKgL = 0.0
                                 recordUnit = selectedManualUnit
 
-                                // YENİ: CalorieRecordEntity oluştur
+                                // CalorieRecordEntity oluştur
                                 val newRecordEntity = CalorieRecordEntity(
                                     foodName = recordFoodName,
                                     originalCaloriesPer1000 = recordOriginalCaloriesPer1000,
@@ -687,16 +741,16 @@ fun KeepNotePage(
                                     originalProteinPerKgL = recordOriginalProteinPerKgL,
                                     originalFatPerKgL = recordOriginalFatPerKgL,
                                     originalCarbPerKgL = recordOriginalCarbPerKgL,
-                                    quantity = quantityDouble, // quantityDouble kullanın
+                                    quantity = quantityDouble,
                                     unit = recordUnit,
                                     time = time,
                                     totalCalories = calculatedCalories,
                                     totalProtein = calculatedProtein,
                                     totalFat = calculatedFat,
-                                    totalCarb = calculatedCarb // Alan adını kontrol edin
+                                    totalCarb = calculatedCarb
                                 )
 
-                                // ViewModel üzerinden Room'a ekle (Repository kullanacak)
+                                // ViewModel üzerinden Room'a ekle
                                 viewModel.addCalorieRecord(newRecordEntity)
 
                                 // Alanları temizle ve modu sıfırla
@@ -714,6 +768,10 @@ fun KeepNotePage(
                                 isLiter = false
                                 searchText = "" // Arama metnini sıfırla
                                 selectedFoodItem = null // Seçimi sıfırla
+                                // Uyarı durumu için state'i sıfırla (Yeni kayıtla toplam değiştiği için LaunchedEffect tekrar kontrol edecektir)
+                                hasShownCalorieWarningForCurrentState = false
+                                // showCalorieWarningDialog = false // Gerek Yok, LaunchedEffect yönetecek
+
                                 Toast.makeText(context, "Manual entry added!", Toast.LENGTH_SHORT).show()
                             } else {
                                 // Eksik veya geçersiz input olduğunda gösterilecek mesaj
@@ -722,47 +780,37 @@ fun KeepNotePage(
 
                         } else { // Normal Giriş Modu
                             // Yiyecek seçili olduğunu, miktar > 0 olduğunu ve zamanın boş olmadığını kontrol et
-                            // quantityValue yerine quantityDouble kullanın
-                            if (selectedFoodItem != null && quantityDouble > 0 && time.isNotEmpty()) { // quantityDouble kullanın
+                            if (selectedFoodItem != null && quantityDouble > 0 && time.isNotEmpty()) {
 
-                                // YENİ HESAPLAMA MANTIĞI - unitScale ve recordUnit'i doğru belirler
                                 val unitScale: Double
                                 val recordUnit: String // Kaydedilecek kaydın birimi
 
-                                // selectedFoodItem FoodItemKeepNote? tipinde, yukarıdaki if kontrolü null olmadığını garanti eder
-                                val item = selectedFoodItem!! // Artık item'ın null olmadığını biliyoruz, !! kullanabiliriz
+                                val item = selectedFoodItem!! // Artık item'ın null olmadığını biliyoruz
 
                                 if (item.type == "Food") {
                                     if (isKilogram) {
-                                        unitScale = quantityDouble // Girilen miktar zaten kg ise ölçek 1'dir (1 kg = 1 kg)
+                                        unitScale = quantityDouble
                                         recordUnit = "kg"
                                     } else { // isGram ise (isKilogram false olduğunda)
-                                        unitScale = quantityDouble / 1000.0 // Girilen miktar gram ise, kg'a ölçeklemek için 1000'e bölün (1 g = 0.001 kg)
+                                        unitScale = quantityDouble / 1000.0
                                         recordUnit = "g"
                                     }
                                 } else if (item.type == "Drink") {
                                     if (isLiter) {
-                                        unitScale = quantityDouble // Girilen miktar zaten L ise ölçek 1'dir (1 L = 1 L)
+                                        unitScale = quantityDouble
                                         recordUnit = "L"
                                     } else { // isMilliliter ise (isLiter false olduğunda)
-                                        unitScale = quantityDouble / 1000.0 // Girilen miktar ml ise, L'ye ölçeklemek için 1000'e bölün (1 ml = 0.001 L)
+                                        unitScale = quantityDouble / 1000.0
                                         recordUnit = "ml"
                                     }
                                 } else {
-                                    // Bu durum mevcut FoodItemKeepNote tipleri ("Food", "Drink") için gerçekleşmemeli.
                                     unitScale = 0.0
                                     recordUnit = "unknown"
                                     Toast.makeText(context, "Unknown item type for unit calculation.", Toast.LENGTH_SHORT).show()
                                 }
 
-                                // calculateNutritionalValues fonksiyonu FoodItemKeepNote ve Double quantityScale almalı.
-                                // Bu fonksiyonun imzasını ve içeriğini Foods.kt dosyanızda kontrol edin/güncelleyin.
-                                // val calculated = calculateNutritionalValues(item, unitScale) // Eğer fonksiyon bu şekilde güncellendiyse
-
-                                // Sizin calculateNutritionalValues fonksiyonunuzun içeriğini veya imzasını bilmediğim için,
-                                // Room'daki Entity'ye kaydetmek üzere hesaplamayı burada manuel yapalım,
-                                // Sizin calculateNutritionalValues fonksiyonunuz da benzerini yapmalıdır:
-                                calculatedCalories = (item.calories.toDouble() * unitScale).roundToInt() // item.calories 1000 birim (kg/L) başına
+                                // Hesaplamayı burada manuel yapalım, calculateNutritionalValues fonksiyonunuz benzerini yapmalıydı
+                                calculatedCalories = (item.calories.toDouble() * unitScale).roundToInt()
                                 calculatedProtein = item.proteinPerKgL * unitScale
                                 calculatedFat = item.fatPerKgL * unitScale
                                 calculatedCarb = item.carbPerKgL * unitScale
@@ -770,22 +818,22 @@ fun KeepNotePage(
 
                                 // RecordEntity oluşturulurken unit ve quantity alanlarını bu yeni değerlerle güncelleyin
                                 val newRecordEntity = CalorieRecordEntity(
-                                    foodName = item.name, // FoodItemKeepNote'dan gelen adı kullanın
-                                    originalCaloriesPer1000 = item.calories, // FoodItemKeepNote'dan gelen orijinal değeri kullanın
-                                    foodType = item.type, // FoodItemKeepNote'dan gelen tipi kullanın
-                                    originalProteinPerKgL = item.proteinPerKgL, // FoodItemKeepNote'dan gelen orijinal değeri kullanın
-                                    originalFatPerKgL = item.fatPerKgL, // FoodItemKeepNote'dan gelen orijinal değeri kullanın
-                                    originalCarbPerKgL = item.carbPerKgL, // FoodItemKeepNote'dan gelen orijinal değeri kullanın
-                                    quantity = quantityDouble, // quantityDouble kullanın
-                                    unit = recordUnit, // Belirlenen recordUnit'i kullanın
+                                    foodName = item.name,
+                                    originalCaloriesPer1000 = item.calories,
+                                    foodType = item.type,
+                                    originalProteinPerKgL = item.proteinPerKgL,
+                                    originalFatPerKgL = item.fatPerKgL,
+                                    originalCarbPerKgL = item.carbPerKgL,
+                                    quantity = quantityDouble,
+                                    unit = recordUnit,
                                     time = time,
-                                    totalCalories = calculatedCalories, // Yeni hesaplanan toplam değerleri kullanın
-                                    totalProtein = calculatedProtein, // Yeni hesaplanan toplam değerleri kullanın
-                                    totalFat = calculatedFat, // Yeni hesaplanan toplam değerleri kullanın
-                                    totalCarb = calculatedCarb // Yeni hesaplanan toplam değerleri kullanın
+                                    totalCalories = calculatedCalories,
+                                    totalProtein = calculatedProtein,
+                                    totalFat = calculatedFat,
+                                    totalCarb = calculatedCarb
                                 )
 
-                                // ViewModel üzerinden Room'a ekle (Repository kullanacak)
+                                // ViewModel üzerinden Room'a ekle
                                 viewModel.addCalorieRecord(newRecordEntity)
 
                                 // Alanları temizle
@@ -795,27 +843,31 @@ fun KeepNotePage(
                                 time = ""
                                 isKilogram = false // Birimleri varsayılan duruma getir
                                 isLiter = false // Birimleri varsayılan duruma getir
+                                // Uyarı durumu için state'i sıfırla (Yeni kayıtla toplam değiştiği için LaunchedEffect tekrar kontrol edecektir)
+                                hasShownCalorieWarningForCurrentState = false
+                                // showCalorieWarningDialog = false // Gerek Yok, LaunchedEffect yönetecek
+
                                 Toast.makeText(context, "Record added!", Toast.LENGTH_SHORT).show()
                             } else {
                                 Toast.makeText(context, "Please select a food, enter a valid quantity (> 0), and time.", Toast.LENGTH_SHORT).show()
                             }
                         }
                     },
-                    // Butonun aktif olup olmayacağını belirleyen koşullar (quantityDouble kullanıldı, null check düzeltildi)
+                    // Butonun aktif olup olmayacağını belirleyen koşullar (quantityDouble kullanıldı)
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(50.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = androidx.compose.material3.ButtonDefaults.buttonColors( containerColor = primaryColor, contentColor = onPrimaryColor ),
                     enabled = if (isManualEntryMode) {
-                        // Manuel modda geçerlilik kontrolü (quantityDouble kullanıldı, null checkler düzeltildi)
+                        // Manuel modda geçerlilik kontrolü
                         manualFoodName.isNotEmpty() && quantityDouble > 0 && time.isNotEmpty() &&
                                 manualCaloriesInput.toIntOrNull() != null && manualCaloriesInput.toIntOrNull()!! >= 0 &&
                                 manualProteinInput.toDoubleOrNull() != null && manualProteinInput.toDoubleOrNull()!! >= 0.0 &&
                                 manualFatInput.toDoubleOrNull() != null && manualFatInput.toDoubleOrNull()!! >= 0.0 &&
                                 manualCarbInput.toDoubleOrNull() != null && manualCarbInput.toDoubleOrNull()!! >= 0.0
                     } else {
-                        // Normal modda geçerlilik kontrolü (quantityDouble kullanıldı)
+                        // Normal modda geçerlilik kontrolü
                         selectedFoodItem != null && quantityDouble > 0 && time.isNotEmpty()
                     }
                 ) {
@@ -923,9 +975,19 @@ fun KeepNotePage(
                             text = "Totals:",
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
+                        // *** YENİ: Günlük Kalori İhtiyacını Göster (Hesaplanmışsa) ***
+                        if (dailyCalculatedCalorieNeed > 0) {
+                            Text(
+                                text = "Daily Need: $dailyCalculatedCalorieNeed kcal",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Normal, fontSize = 16.sp), // Biraz daha küçük font
+                                color = contentColor // Primary yerine contentColor kullanmak daha iyi olabilir
+                            )
+                            Spacer(modifier = Modifier.height(4.dp)) // İhtiyaç ile tüketilen arasına boşluk
+                        }
+                        // *********************************************************
+
                         Text(
-                            text = "Calories: $totalCalories kcal",
+                            text = "Calories Consumed: $totalCalories kcal", // Metin güncellendi
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                         )
                         // Makro toplamlarını sadece sıfırdan büyükse göster
@@ -990,10 +1052,13 @@ fun KeepNotePage(
                 text = { Text("Are you sure you want to clear all calorie records?") },
                 confirmButton = {
                     TextButton(onClick = {
-                        // ViewModel üzerinden tüm kayıtları sil (Repository kullanacak)
+                        // ViewModel üzerinden tüm kayıtları sil
                         viewModel.clearAllCalorieRecords()
                         showClearConfirmationDialog = false
                         Toast.makeText(context, "All records cleared!", Toast.LENGTH_SHORT).show()
+                        // Kayıtlar silinince uyarı state'ini sıfırla
+                        hasShownCalorieWarningForCurrentState = false
+                        showCalorieWarningDialog = false
                     }) {
                         Text("Yes", color = primaryColor, fontStyle = FontStyle.Italic)
                     }
@@ -1014,9 +1079,7 @@ fun KeepNotePage(
                 text = { Text("Are you sure you want to save today's summary?") },
                 confirmButton = {
                     TextButton(onClick = {
-                        // ViewModel üzerinden günlük özeti kaydet/güncelle (Repository kullanacak)
-                        coroutineScope.launch { // ViewModel suspend fonksiyonu için scope
-                            // saveOrUpdateDailySummary ViewModel'da DailySummaryEntity oluşturup Repository'e gönderiyor
+                        coroutineScope.launch {
                             viewModel.saveOrUpdateDailySummary(totalCalories, totalProtein, totalFat, totalCarb)
                             showSaveSummaryDialog = false // Dialogu kapat
                             Toast.makeText(context, "Summary saved!", Toast.LENGTH_SHORT).show()
@@ -1034,7 +1097,7 @@ fun KeepNotePage(
             )
         }
 
-        // --- 3. Update Daily Summary Dialog ---
+        // 3. Update Daily Summary Dialog
         if (showUpdateSummaryDialog) {
             AlertDialog(
                 onDismissRequest = { showUpdateSummaryDialog = false },
@@ -1042,13 +1105,10 @@ fun KeepNotePage(
                 text = { Text("A summary for today already exists. Do you want to update it with the current totals?") },
                 confirmButton = {
                     TextButton(onClick = {
-                        // ViewModel üzerinden günlük özeti kaydet/güncelle (Repository kullanacak)
-                        coroutineScope.launch { // ViewModel suspend fonksiyonu için scope
-                            // saveOrUpdateDailySummary ViewModel'da DailySummaryEntity oluşturup Repository'e gönderiyor
+                        coroutineScope.launch {
                             viewModel.saveOrUpdateDailySummary(totalCalories, totalProtein, totalFat, totalCarb)
                             showUpdateSummaryDialog = false // Dialogu kapat
                             Toast.makeText(context, "Summary updated!", Toast.LENGTH_SHORT).show()
-                            // Güncellemeden sonra da Daily Summary ekranına yönlendirebiliriz
                             navController.navigate(Screens.DailySummaryScreen)
                         }
                     }) {
@@ -1065,19 +1125,21 @@ fun KeepNotePage(
 
 
         // 4. Delete Single Record Dialog
-        if (showDeleteConfirmationDialog && selectedRecordToDelete != null) { // selectedRecordToDelete CalorieRecordEntity tipinde
+        if (showDeleteConfirmationDialog && selectedRecordToDelete != null) {
             AlertDialog(
                 onDismissRequest = { showDeleteConfirmationDialog = false; selectedRecordToDelete = null },
                 title = { Text("Delete Record", color = primaryColor, fontStyle = FontStyle.Italic) },
                 text = { Text("Are you sure you want to delete this record?") },
                 confirmButton = {
                     TextButton(onClick = {
-                        // ViewModel üzerinden belirli kaydı sil (Repository kullanacak)
                         selectedRecordToDelete?.let { recordEntity ->
                             viewModel.deleteCalorieRecord(recordEntity) // ViewModel metodunu çağır
                         }
                         showDeleteConfirmationDialog = false
                         selectedRecordToDelete = null
+                        // Kayıt silinince uyarı state'ini sıfırla (Toplam kalori değişecektir, bu LaunchedEffect'i tekrar tetikler)
+                        hasShownCalorieWarningForCurrentState = false
+                        showCalorieWarningDialog = false
                         Toast.makeText(context, "Record deleted!", Toast.LENGTH_SHORT).show()
                     }) {
                         Text("Yes", color = primaryColor, fontStyle = FontStyle.Italic)
@@ -1090,5 +1152,34 @@ fun KeepNotePage(
                 }
             )
         }
+
+        // *** YENİ DİYALOG: Kalori Aşımı Uyarısı ***
+        if (showCalorieWarningDialog) {
+            AlertDialog(
+                onDismissRequest = {
+                    showCalorieWarningDialog = false
+                    // hasShownCalorieWarningForCurrentState true kalır, aynı durum için tekrar göstermez
+                },
+                title = { Text("Calorie Warning", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold) }, // Hata rengi ve kalın font
+                text = {
+                    Column {
+                        Text("You have exceeded your estimated daily calorie need!")
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text("Calculated Need: $dailyCalculatedCalorieNeed kcal")
+                        Text("Calories Consumed: $totalCalories kcal")
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showCalorieWarningDialog = false
+                        // hasShownCalorieWarningForCurrentState true kalır
+                    }) {
+                        Text("OK", color = MaterialTheme.colorScheme.error) // Buton rengi hata rengiyle uyumlu
+                    }
+                }
+            )
+        }
+        // *******************************************
+
     } // Box Sonu
 } // KeepNotePage Sonu

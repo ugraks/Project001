@@ -51,7 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.ugraks.project1.presentation.dailycalorie.DailyCalorieViewModel // ViewModel'inizi import edin
+
 
 @Composable
 fun DailyCalories(

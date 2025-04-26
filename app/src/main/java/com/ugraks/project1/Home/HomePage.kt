@@ -162,7 +162,7 @@ fun HomePage(navController: NavHostController) {
                             "Welcome",
                             modifier = Modifier.fillMaxWidth(),
                             textAlign = TextAlign.Center,
-                            color = MaterialTheme.colorScheme.onSurface,
+                            color = MaterialTheme.colorScheme.primary,
                             style = MaterialTheme.typography.titleLarge
 
                         )

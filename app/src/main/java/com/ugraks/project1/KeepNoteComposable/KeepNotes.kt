@@ -151,6 +151,7 @@ fun KeepNotePage(
         modifier = Modifier
             .fillMaxSize()
             .background(backgroundColor)
+            .padding(top = 25.dp, bottom = 25.dp)
     ) {
         // LazyColumn: Tüm içeriğin kaydırılabilir olmasını sağlar
         LazyColumn(

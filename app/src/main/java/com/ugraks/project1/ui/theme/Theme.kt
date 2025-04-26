@@ -13,7 +13,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
 val DarkColorScheme = darkColorScheme(
-    primary = Color(0xFFE91E63),       // Magenta
+    primary = Color(0xFF30832E),       // Magenta
     onPrimary = Color.Black,
     background = Color(0xFF121212),
     onBackground = Color.White,
@@ -22,7 +22,7 @@ val DarkColorScheme = darkColorScheme(
 )
 
 val LightColorScheme = lightColorScheme(
-    primary = Color(0xFFE91E63),       // Magenta
+    primary = Color(0xFF30832E),       // Magenta
     onPrimary = Color.White,
     background = Color.White,
     onBackground = Color.Black,

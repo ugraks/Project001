@@ -263,10 +263,11 @@ fun HomePage(navController: NavHostController) {
                         onClick = {
                             navController.navigate(Screens.BoxingMainScreen.route)
                         },
-                        containerColor = MaterialTheme.colorScheme.secondary,
+                        containerColor = MaterialTheme.colorScheme.primary,
                         modifier = Modifier
                             .align(Alignment.BottomEnd) // Sağ altta hizalama
                             .padding(bottom = 144.dp) // Üst üste gelmesi için padding
+                            , shape = RoundedCornerShape(90)
                     ) {
                         Icon(
                             painter = painterResource(id = R.drawable.baseline_sports_mma_24),
@@ -282,6 +283,7 @@ fun HomePage(navController: NavHostController) {
                         modifier = Modifier
                             .align(Alignment.BottomEnd) // Sağ altta hizalama
                             .padding(bottom = 80.dp) // Üst üste gelmesi için padding
+                            , shape = RoundedCornerShape(90)
                     ) {
                         Icon(
                             painter = painterResource(id = R.drawable.baseline_fitness_center_24),
@@ -311,10 +313,11 @@ fun HomePage(navController: NavHostController) {
                                 navController.navigate(Screens.PedoMeterScreen)
                             }
                         },
-                        containerColor = MaterialTheme.colorScheme.secondary,
+                        containerColor = MaterialTheme.colorScheme.primary,
                         modifier = Modifier
                             .align(Alignment.BottomEnd) // Sağ altta hizalama
                             .padding(bottom = 16.dp) // 2. FAB'yi biraz daha altta konumlandırıyoruz
+                            , shape = RoundedCornerShape(90)
                     ) {
                         Icon(
                             painter = painterResource(id = R.drawable.baseline_directions_walk_24),

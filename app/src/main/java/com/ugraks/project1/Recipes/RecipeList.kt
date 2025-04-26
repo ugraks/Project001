@@ -49,7 +49,7 @@ fun RecipeListScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(colorScheme.background) // Arka plan rengi
-            .padding(horizontal = 16.dp) // Yatay padding
+            .padding(horizontal = 20.dp, vertical = 20.dp) // Yatay padding
             .statusBarsPadding() // Durum çubuğu boşluğu
             .navigationBarsPadding() // Navigasyon çubuğu boşluğu
     ) {

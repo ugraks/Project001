@@ -1,67 +1,46 @@
-package com.ugraks.project1.Boxing // Kendi paket adınız
+package com.ugraks.project1.Boxing
 
-import android.content.Context // Artık Context parametresi Composable'a gerek YOK
 import android.widget.Toast
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.BorderStroke // Border için hala importta dursun, gerekirse kullanılır
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState // StateFlow'u izlemek için
-import androidx.compose.runtime.getValue // State değerini almak için
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.remember
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext // Toast mesajı için
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel // ViewModel'ı inject etmek için
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.ugraks.project1.AppNavigation.Screens // Navigasyon ekranları
-// Asset okuma importları Composable'da gerek YOK
-// import com.ugraks.project1.Boxing.BoxingItem
-// import com.ugraks.project1.Boxing.loadBoxingDataFromAssets
-import com.ugraks.project1.ui.viewmodels.BoxingViewModel // YENİ: BoxingViewModel importu
-
+import com.ugraks.project1.AppNavigation.Screens
+import com.ugraks.project1.ui.viewmodels.BoxingViewModel
 
 @Composable
 fun BoxingMainScreen(
     navController: NavController,
-    // Context parametresi kaldırıldı, ViewModel inject edilecek
-    viewModel: BoxingViewModel = hiltViewModel() // YENİ: ViewModel inject et
+    viewModel: BoxingViewModel = hiltViewModel()
 ) {
-    val context = LocalContext.current // Toast mesajı için Context
-
-    // Boks öğeleri ve kategoriler artık ViewModel'dan geliyor
-    // val boxingItems = loadBoxingDataFromAssets(context) // Bu satır kaldırıldı
-    // val boxingCategories = boxingItems.map { it.category }.distinct() // Bu satır kaldırıldı
+    val context = LocalContext.current
 
     // ViewModel'dan boks kategorilerini StateFlow olarak izle
-    val boxingCategories by viewModel.boxingCategories.collectAsState() // YENİ: ViewModel'dan al
+    val boxingCategories by viewModel.boxingCategories.collectAsState()
 
-    // Kullanıcı tarafından seçilen boks kategorilerini Composable state'inde tut
+    // Çoklu seçim için kullanılacak state
     val selectedBoxingCategories = remember { mutableStateListOf<String>() }
+
+    // Kartlar için seçili olmayan durumdaki şeffaf gri renk tonu
+    val unselectedCardColor = Color.Gray.copy(alpha = 0.2f) // Şeffaf gri tonu
+
+    // Kartlar için seçili durumdaki renk temanın ana rengi olacak
+    val selectedCardColor = MaterialTheme.colorScheme.primary
 
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -85,11 +64,13 @@ fun BoxingMainScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 24.dp)
-                .align(Alignment.TopCenter),
-            horizontalAlignment = Alignment.Start
+                .padding(horizontal = 24.dp) // Yatay padding ile içeriği sınırlıyoruz
+                .align(Alignment.TopCenter) // Column'u üstte ortala
+                // İçeriğin kendisini de yatayda ortalamak için
+                .wrapContentSize(Alignment.TopCenter), // İçeriği top-center'a sar
+            horizontalAlignment = Alignment.CenterHorizontally // İçindeki satırları ve diğer öğeleri yatayda ortala
         ) {
-            Spacer(modifier = Modifier.height(120.dp)) // başlıkla geri butonu arasında boşluk
+            Spacer(modifier = Modifier.height(120.dp)) // Başlıkla içerik arasına boşluk
 
             // Başlık
             Text(
@@ -101,59 +82,95 @@ fun BoxingMainScreen(
                     fontSize = 26.sp
                 ),
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .fillMaxWidth() // Başlığın genişliği doldurmasını sağla
                     .padding(bottom = 16.dp),
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center // Başlık metnini ortala
             )
 
-            // Checkbox Listesi (ViewModel'dan gelen boxingCategories listesini kullanır)
-            // Eğer boxingCategories boşsa (ViewModel henüz yüklemediyse), boş liste gösterilir
-            boxingCategories.forEach { category -> // YENİ: ViewModel'dan gelen listeyi kullan
+            // Manuel Grid Benzeri Layout (Column ve Row kullanarak)
+            val totalCategories = boxingCategories.size
+            val rowCount = (totalCategories + 2) / 3
+
+            // Her satır için döngü
+            for (i in 0 until rowCount) {
+                val startIndex = i * 3
+                val endIndex = minOf(startIndex + 3, totalCategories)
+
                 Row(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 6.dp),
+                        .fillMaxWidth() // Satır genişliği doldursun
+                        .padding(vertical = 4.dp), // Satırlar arasına dikey boşluk
+                    horizontalArrangement = Arrangement.spacedBy(8.dp), // Kartlar arasına yatay boşluk
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Checkbox(
-                        checked = selectedBoxingCategories.contains(category),
-                        onCheckedChange = { isChecked ->
-                            if (isChecked) {
-                                selectedBoxingCategories.add(category)
-                            } else {
-                                selectedBoxingCategories.remove(category)
+                    // Bu satırdaki her kategori için döngü
+                    for (j in startIndex until endIndex) {
+                        val category = boxingCategories[j] // Kategori objesini al
+                        val isSelected = selectedBoxingCategories.contains(category) // Seçili mi?
+
+                        Card(
+                            // Modifier sırası: ağırlık (layout için), oran (şekil için), sonra tıklama
+                            modifier = Modifier
+                                .weight(1f) // Row içinde eşit ağırlık/yer kapla
+                                .aspectRatio(1f) // Kare şeklini koru (1:1 oran)
+                                .clickable { // Tıklama özelliği
+                                    // Tıklanınca seçili durumunu değiştir
+                                    if (isSelected) {
+                                        selectedBoxingCategories.remove(category)
+                                    } else {
+                                        selectedBoxingCategories.add(category)
+                                    }
+                                },
+                            shape = RoundedCornerShape(12.dp), // Yuvarlak köşeler
+                            colors = CardDefaults.cardColors(
+                                // Seçili ise temanın ana rengi, değilse şeffaf gri
+                                containerColor = if (isSelected) selectedCardColor else unselectedCardColor
+                            ),
+                            // Seçili border'ı kaldırdık, renk değişimi yeterli gösterge
+                            border = null
+                        ) {
+                            Box( // Kartın içeriğini ortala
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = category, // Kategori adını göster
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        // Seçili ise temanın onPrimary rengi (genellikle beyaz/siyah), değilse onSurface
+                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                                        fontWeight = FontWeight.Medium,
+                                        fontFamily = FontFamily.SansSerif
+                                    ),
+                                    textAlign = TextAlign.Center // Metni ortala
+                                    // maxLines = 1, overflow = TextOverflow.Ellipsis // İhtiyaca göre eklenebilir
+                                )
                             }
-                            // Seçim değiştiğinde ViewModel'a bildirme artık GEREK YOK
-                            // NavArgs ile bilgiyi taşıyoruz
-                        },
-                        colors = CheckboxDefaults.colors(
-                            checkedColor = MaterialTheme.colorScheme.primary,
-                            uncheckedColor = MaterialTheme.colorScheme.onSurface,
-                            checkmarkColor = MaterialTheme.colorScheme.onPrimary
-                        )
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = category, // Display category name
-                        style = MaterialTheme.typography.bodyLarge.copy(
-                            color = MaterialTheme.colorScheme.onBackground,
-                            fontFamily = FontFamily.SansSerif
-                        )
-                    )
+                        }
+                    }
+
+                    // Son satırda 3'ten az kart varsa, boşluk ekleyerek düzeni koru
+                    val itemsInRow = endIndex - startIndex
+                    if (itemsInRow < 3) {
+                        repeat(3 - itemsInRow) {
+                            Spacer(modifier = Modifier.weight(1f)) // Eksik kartlar yerine boşluk ekle
+                        }
+                    }
                 }
             }
 
-            // Show Button
+            Spacer(modifier = Modifier.height(32.dp)) // Kartlar ve buton arasına boşluk
+
+            // "Show Button"
             Button(
                 onClick = {
                     if (selectedBoxingCategories.isNotEmpty()) {
-                        // Navigasyona giderken seçili kategorileri NavArgs olarak string formatında ilet
-                        // ViewModel'a selectedCategories'i set etme artık GEREK YOK
+                        // Seçili kategorileri alıp virgülle birleştirerek navigasyon yap
                         val route = Screens.BoxingDetailListScreen.createRoute(
-                            selectedBoxingCategories.joinToString(",") // NavArgs olarak string gönder
+                            selectedBoxingCategories.joinToString(",") // Virgülle ayrılmış string olarak gönder
                         )
                         navController.navigate(route)
                     } else {
+                        // Hiçbir şey seçilmediyse Toast mesajı göster
                         Toast.makeText(
                             context,
                             "Please select at least one boxing category",
@@ -161,16 +178,14 @@ fun BoxingMainScreen(
                         ).show()
                     }
                 },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 32.dp),
+                modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary
                 )
             ) {
                 Text(
-                    text = "Show Boxing Items",
+                    text = "Show Selected Boxing Items", // Buton metni
                     style = MaterialTheme.typography.bodyLarge.copy(
                         color = MaterialTheme.colorScheme.onPrimary,
                         fontFamily = FontFamily.SansSerif
@@ -180,13 +195,3 @@ fun BoxingMainScreen(
         }
     }
 }
-
-// loadBoxingDataFromAssets fonksiyonu bu dosyadan kaldırıldı, Repository tarafından kullanılacak
-/*
-fun loadBoxingDataFromAssets(context: Context): List<BoxingItem> {
-    // ... fonksiyon içeriği ...
-}
-*/
-
-// BoxingItem data class'ı bu dosyadan kaldırıldı, kendi dosyasında (Boxing.kt) tanımlı
-// data class BoxingItem(...)
